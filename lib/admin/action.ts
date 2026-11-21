@@ -1,6 +1,6 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import type { z } from "zod";
 
 import { fail, type ActionResult } from "@/lib/auth/action-result";
@@ -56,7 +56,8 @@ export async function adminAction<S extends z.ZodType, T = undefined>(
     }
     if (result.ok) {
       await audit(opts.action, { entityType: entity?.type, entityId: entity?.id });
-      for (const tag of opts.revalidate ?? []) revalidateTag(tag, { expire: 0 });
+      // updateTag: read-your-own-writes; the next request waits for fresh data.
+      for (const tag of opts.revalidate ?? []) updateTag(tag);
     }
     return result;
   } catch (error) {

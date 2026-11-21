@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { formatCents } from "@/lib/money";
 import { PageHeader } from "@/components/admin/page-header";
 import { requireStaffAAL2 } from "@/lib/auth/guards";
-import { formatDay, formatInZone } from "@/lib/time";
+import { formatDay, todayInZone } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Dashboard" };
@@ -38,16 +38,11 @@ export default async function AdminDashboardPage() {
   const isOps = user.roles.some((r) => r === "ops" || r === "owner");
   const isOwner = user.roles.includes("owner");
   const supabase = await createClient();
-  const today = formatInZone(new Date().toISOString(), "America/Los_Angeles", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const [mm, dd, yyyy] = today.split("/");
+  const today = todayInZone("America/Los_Angeles");
   const { data: weeks } = await supabase
     .from("menu_weeks")
     .select("id, week_start, status, cutoff_at")
-    .gte("week_start", `${yyyy}-${mm}-${dd}`)
+    .gte("week_start", today)
     .order("week_start")
     .limit(3);
   const nextWeek = weeks?.[0];
@@ -63,7 +58,13 @@ export default async function AdminDashboardPage() {
       ? supabase.from("subscriptions").select("id", { count: "exact", head: true }).in("status", ["active", "trialing"])
       : Promise.resolve({ count: null }),
     isOwner
-      ? supabase.from("menu_weeks").select("id, week_start").eq("status", "draft").order("week_start").limit(3)
+      ? supabase
+          .from("menu_weeks")
+          .select("id, week_start")
+          .eq("status", "draft")
+          .gte("week_start", today)
+          .order("week_start")
+          .limit(3)
       : Promise.resolve({ data: null }),
   ]);
   const weekOrders = (orders.data ?? []) as { total_cents: number; status: string }[];

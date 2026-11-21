@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addDays, formatDay, fromZonedInput, toZonedInput } from "./time";
+import { addDays, formatDay, formatInZone, fromZonedInput, todayInZone, toZonedInput } from "./time";
 
 const LA = "America/Los_Angeles";
 
@@ -20,5 +20,14 @@ describe("business timezone", () => {
     expect(formatDay("2026-11-30")).toBe("Mon, Nov 30");
     expect(addDays("2026-11-30", 4)).toBe("2026-12-04");
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+});
+
+describe("formatInZone / todayInZone", () => {
+  it("accepts dateStyle without mixing in default fields", () => {
+    expect(formatInZone("2026-11-26T02:00:00Z", "America/Los_Angeles", { dateStyle: "medium" })).toBe("Nov 25, 2026");
+  });
+  it("gives the business-local date", () => {
+    expect(todayInZone("America/Los_Angeles", new Date("2026-11-26T05:00:00Z"))).toBe("2026-11-25");
   });
 });

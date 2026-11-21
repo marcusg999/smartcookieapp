@@ -29,14 +29,20 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- A new amount opens a new history row; the Stripe ids that follow (set
+  -- right after the matching Stripe Price is created) fill in the open row.
   if tg_op = 'INSERT' or new.base_price_cents is distinct from old.base_price_cents
-     or new.school_price_cents is distinct from old.school_price_cents
-     or new.stripe_price_id is distinct from old.stripe_price_id then
+     or new.school_price_cents is distinct from old.school_price_cents then
     update public.menu_item_price_history set active_to = now() where menu_item_id = new.id and active_to is null;
     insert into public.menu_item_price_history (menu_item_id, base_price_cents, school_price_cents, stripe_price_id,
                                                 stripe_school_price_id, changed_by)
     values (new.id, new.base_price_cents, new.school_price_cents, new.stripe_price_id, new.stripe_school_price_id,
             (select auth.uid()));
+  elsif new.stripe_price_id is distinct from old.stripe_price_id
+     or new.stripe_school_price_id is distinct from old.stripe_school_price_id then
+    update public.menu_item_price_history
+      set stripe_price_id = new.stripe_price_id, stripe_school_price_id = new.stripe_school_price_id
+      where menu_item_id = new.id and active_to is null;
   end if;
   return new;
 end;

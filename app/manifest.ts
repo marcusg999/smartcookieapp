@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
-// PWA manifest. Name, colours and icons are placeholders; theme/background
-// colours will be pulled from site_settings once branding is in the CMS.
+// PWA manifest in the logo palette. Browsers cache it and fetch it without
+// a session, so it stays static; in-page colours follow Settings.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Smart Cookie",
@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#fdf6e9",
-    theme_color: "#c2410c",
+    background_color: "#fbeeea",
+    theme_color: "#fbeeea",
     categories: ["food", "lifestyle"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },

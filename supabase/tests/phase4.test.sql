@@ -1,7 +1,7 @@
 -- Phase 4 RLS tests (pgTAP): customer notes, credits, price history, top-9 lock, media usage.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(38);
 
 -- ── Helpers ─────────────────────────────────────────────────────────────────
 create function pg_temp.mk_user(p_id uuid, p_email text, p_meta jsonb default '{}') returns void language sql as $$
@@ -107,6 +107,9 @@ select lives_ok($$ update public.menu_items set base_price_cents = 1000, stripe_
   'owner with a fresh MFA changes the price');
 select is((select count(*)::int from public.menu_item_price_history where menu_item_id = (select id from fx where k = 'item')), 2,
   'a price change adds a history row');
+select lives_ok($$ update public.menu_items set stripe_price_id = 'price_newer' where slug = 'p4-test-meal' $$, 'owner sets a new Stripe id');
+select is((select stripe_price_id from public.menu_item_price_history where menu_item_id = (select id from fx where k = 'item') and active_to is null),
+  'price_newer', 'a Stripe-id-only change fills in the open history row instead of adding one');
 select is((select count(*)::int from public.menu_item_price_history where menu_item_id = (select id from fx where k = 'item') and active_to is null), 1,
   'only the newest price is open-ended');
 select pg_temp.act_as('40000000-0000-4000-8000-000000000006', 'aal2', 60);

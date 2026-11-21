@@ -45,23 +45,34 @@ export function fromZonedInput(value: string, timeZone: string): string | null {
   return instant.toISOString();
 }
 
-/** Friendly display, e.g. "Thu, Nov 26, 6:00 PM PST". */
+const DEFAULT_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+};
+
+/**
+ * Friendly display, e.g. "Thu, Nov 26, 6:00 PM PST". Options, when given,
+ * REPLACE the default fields (Intl rejects dateStyle mixed with weekday etc.).
+ */
 export function formatInZone(
   iso: string | null | undefined,
   timeZone: string,
-  opts: Intl.DateTimeFormatOptions = {},
+  opts?: Intl.DateTimeFormatOptions,
 ): string {
   if (!iso) return "";
   return new Intl.DateTimeFormat("en-US", {
     timeZone,
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-    ...opts,
+    ...(opts && Object.keys(opts).length ? opts : DEFAULT_FORMAT),
   }).format(new Date(iso));
+}
+
+/** Today's date (YYYY-MM-DD) in a timezone. */
+export function todayInZone(timeZone: string, now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
 /** "2026-11-30" → "Mon, Nov 30" (date-only values are calendar dates, no timezone shift). */

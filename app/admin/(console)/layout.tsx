@@ -83,7 +83,7 @@ const NAV: NavGroup[] = [
 ];
 
 const linkClass =
-  "flex shrink-0 items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-semibold hover:border-ink";
+  "flex shrink-0 items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-semibold whitespace-nowrap hover:border-ink";
 const activeClass = "border-ink! bg-orange shadow-ink-sm";
 
 export default async function AdminConsoleLayout({ children }: LayoutProps<"/admin">) {

@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   // nonce-based CSP needs every page rendered per request, and the Next.js
   // docs state PPR is incompatible with nonces. See docs/phase-1.md.
   cacheComponents: false,
+  // forbidden() → 403 for staff who open an admin page their role can't use
+  // (Phase 4). Experimental in Next 16; non-staff still get a 404.
+  experimental: { authInterrupts: true },
   turbopack: {
     rules: {
       "*.css": {

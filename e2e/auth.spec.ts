@@ -89,13 +89,14 @@ test("staff without MFA are forced to enroll, then reach the console", async ({ 
   await page.getByRole("button", { name: /continue/i }).click();
 
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Admin dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   // Kitchen staff don't see owner-only areas.
   await expect(page.getByRole("link", { name: "Staff" })).toHaveCount(0);
-  expect((await page.goto("/admin/staff"))?.status()).toBe(404);
+  expect((await page.goto("/admin/staff"))?.status()).toBe(403);
 });
 
 test("staff with MFA must pass the challenge after signing in", async ({ page }) => {
+  test.slow(); // freshTotp() waits for the next 30 s window
   const email = uniqueEmail("ops");
   await createUser(email, ["ops"]);
   const secret = await enrollTotp(email);

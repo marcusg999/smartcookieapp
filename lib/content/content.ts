@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { RichNode } from "@/lib/validation/rich-text";
 
-/** Cache tags. Publishing calls revalidateTag(tag, { expire: 0 }). */
+/** Cache tags. Admin actions call updateTag(tag) after a successful write. */
 export const TAGS = { content: "content", settings: "settings", menu: "menu", pages: "pages", faqs: "faqs" } as const;
 
 export type ContentMap = Record<string, unknown>;
@@ -40,11 +40,12 @@ export const isOwnerPreview = cache(async (): Promise<boolean> => {
  * so RLS still applies).
  */
 export const getContent = cache(async (): Promise<Content> => {
-  const published = await fetchPublished();
-  if (!(await isOwnerPreview())) return new Content(published, false);
+  if (!(await isOwnerPreview())) return new Content(await fetchPublished(), false);
+  // Preview never touches the shared cache (a draft-mode render that filled it
+  // could race a publish and pin stale copy for visitors).
   const supabase = await createClient();
   const { data } = await supabase.from("content_blocks").select("key, draft_value, published_value");
-  const merged: ContentMap = { ...published };
+  const merged: ContentMap = {};
   for (const row of data ?? []) merged[row.key] = row.draft_value ?? row.published_value;
   return new Content(merged, true);
 });
