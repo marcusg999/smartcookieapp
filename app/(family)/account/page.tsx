@@ -5,6 +5,7 @@ import { signOut } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/guards";
+import { getContent } from "@/lib/content/content";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Your account" };
@@ -12,7 +13,8 @@ export const metadata = { title: "Your account" };
 export default async function AccountPage() {
   const user = await requireUser("/account");
   const supabase = await createClient();
-  const [{ data: profile }, { data: passkeys }] = await Promise.all([
+  const [c, { data: profile }, { data: passkeys }] = await Promise.all([
+    getContent(),
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
     supabase.auth.passkey.list(),
   ]);
@@ -23,13 +25,13 @@ export default async function AccountPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {firstName ? `Hi, ${firstName}` : "Your account"}
+            {firstName ? c.text("account.greeting", { name: firstName }) : c.text("account.title")}
           </h1>
           <p className="text-muted-foreground">{user.email}</p>
         </div>
         <form action={signOut}>
           <Button type="submit" variant="outline" size="sm">
-            Sign out
+            {c.text("nav.sign_out")}
           </Button>
         </form>
       </div>
@@ -39,15 +41,15 @@ export default async function AccountPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <KeyRound aria-hidden="true" className="size-5 text-primary" />
-              <h2>Sign in faster with a passkey</h2>
+              <h2>{c.text("account.passkey_offer.title")}</h2>
             </CardTitle>
             <CardDescription>
-              Use Face ID, Touch ID or your device PIN instead of a password.{" "}
+              {c.text("account.passkey_offer.body")}{" "}
               <Link
                 href="/account/security"
                 className="font-medium text-ink underline decoration-orange decoration-[3px] underline-offset-4 hover:decoration-ink"
               >
-                Add a passkey
+                {c.text("account.passkey_offer.cta")}
               </Link>
             </CardDescription>
           </CardHeader>
@@ -63,8 +65,8 @@ export default async function AccountPage() {
             <Card className="h-full transition-colors hover:border-primary/40">
               <CardHeader>
                 <ShieldCheck aria-hidden="true" className="size-5 text-primary" />
-                <CardTitle>Security</CardTitle>
-                <CardDescription>Sign-in methods, passkeys, password, two-factor, devices.</CardDescription>
+                <CardTitle>{c.text("account.security.title")}</CardTitle>
+                <CardDescription>{c.text("account.security.body")}</CardDescription>
               </CardHeader>
             </Card>
           </Link>
@@ -77,8 +79,8 @@ export default async function AccountPage() {
             <Card className="h-full transition-colors hover:border-primary/40">
               <CardHeader>
                 <Lock aria-hidden="true" className="size-5 text-primary" />
-                <CardTitle>Privacy</CardTitle>
-                <CardDescription>Download your data or delete your account.</CardDescription>
+                <CardTitle>{c.text("account.privacy.title")}</CardTitle>
+                <CardDescription>{c.text("account.privacy.body")}</CardDescription>
               </CardHeader>
             </Card>
           </Link>

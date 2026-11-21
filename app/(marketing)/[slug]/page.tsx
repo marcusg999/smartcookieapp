@@ -7,11 +7,22 @@ import { TAGS } from "@/lib/content/content";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { RichNode } from "@/lib/validation/rich-text";
 
-type PublicPage = { slug: string; title: string; seo_title: string | null; seo_description: string | null; og_image: string | null; body: RichNode | null };
+type PublicPage = {
+  slug: string;
+  title: string;
+  seo_title: string | null;
+  seo_description: string | null;
+  og_image: string | null;
+  body: RichNode | null;
+};
 
 const getPage = unstable_cache(
   async (slug: string): Promise<PublicPage | null> => {
-    const { data } = await createPublicClient().from("pages_public").select("slug, title, seo_title, seo_description, og_image, body").eq("slug", slug).maybeSingle();
+    const { data } = await createPublicClient()
+      .from("pages_public")
+      .select("slug, title, seo_title, seo_description, og_image, body")
+      .eq("slug", slug)
+      .maybeSingle();
     return (data as PublicPage | null) ?? null;
   },
   ["public-page"],

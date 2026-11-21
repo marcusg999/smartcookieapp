@@ -36,7 +36,11 @@ export async function renderEmail(opts: {
 }) {
   const body = fillVariables(opts.body, opts.vars);
   const html = await render(
-    <EmailLayout preheader={fillVariables(opts.preheader, opts.vars)} businessName={opts.businessName} colors={opts.colors}>
+    <EmailLayout
+      preheader={fillVariables(opts.preheader, opts.vars)}
+      businessName={opts.businessName}
+      colors={opts.colors}
+    >
       <EmailRichText doc={body} ink={opts.colors.ink} />
     </EmailLayout>,
   );

@@ -43,7 +43,13 @@ export async function savePlan(input: PlanInput) {
     async (data, { supabase }) => {
       const { id: planId, existing_subscribers, ...fields } = data;
       const existing = planId
-        ? check(await supabase.from("plans").select("id, price_cents, billing_interval, stripe_product_id, stripe_price_id, currency").eq("id", planId).single())
+        ? check(
+            await supabase
+              .from("plans")
+              .select("id, price_cents, billing_interval, stripe_product_id, stripe_price_id, currency")
+              .eq("id", planId)
+              .single(),
+          )
         : null;
       const row = { ...fields, description_rich: fields.description_rich ?? null };
 
@@ -53,15 +59,31 @@ export async function savePlan(input: PlanInput) {
         check(await supabase.from("plans").update(row).eq("id", id));
       } else {
         let slug = slugify(data.name).slice(0, 80);
-        const { count } = await supabase.from("plans").select("id", { count: "exact", head: true }).like("slug", `${slug}%`);
+        const { count } = await supabase
+          .from("plans")
+          .select("id", { count: "exact", head: true })
+          .like("slug", `${slug}%`);
         if (count) slug = `${slug}-${count + 1}`;
-        id = (check(await supabase.from("plans").insert({ ...row, slug }).select("id").single()) as { id: string }).id;
+        id = (
+          check(
+            await supabase
+              .from("plans")
+              .insert({ ...row, slug })
+              .select("id")
+              .single(),
+          ) as { id: string }
+        ).id;
       }
 
-      const priceChanged = !existing || existing.price_cents !== data.price_cents || existing.billing_interval !== data.billing_interval;
+      const priceChanged =
+        !existing || existing.price_cents !== data.price_cents || existing.billing_interval !== data.billing_interval;
       let moved = 0;
       if (priceChanged) {
-        const productId = await ensureProduct({ productId: existing?.stripe_product_id, name: data.name, metadata: { plan_id: id } });
+        const productId = await ensureProduct({
+          productId: existing?.stripe_product_id,
+          name: data.name,
+          metadata: { plan_id: id },
+        });
         const priceId = await replacePrice({
           productId,
           unitAmount: data.price_cents,
@@ -70,13 +92,22 @@ export async function savePlan(input: PlanInput) {
           recurring: planRecurring(data.billing_interval),
           metadata: { plan_id: id },
         });
-        check(await supabase.from("plans").update({ stripe_product_id: productId, stripe_price_id: priceId }).eq("id", id));
+        check(
+          await supabase.from("plans").update({ stripe_product_id: productId, stripe_price_id: priceId }).eq("id", id),
+        );
 
         if (existing && existing_subscribers === "move_at_renewal") {
           const subs = check(
-            await supabase.from("subscriptions").select("stripe_subscription_id").eq("plan_id", id).in("status", ["active", "trialing", "past_due"]),
+            await supabase
+              .from("subscriptions")
+              .select("stripe_subscription_id")
+              .eq("plan_id", id)
+              .in("status", ["active", "trialing", "past_due"]),
           );
-          moved = await moveSubscriptionsToPrice(subs.map((s) => s.stripe_subscription_id).filter((s): s is string => !!s), priceId);
+          moved = await moveSubscriptionsToPrice(
+            subs.map((s) => s.stripe_subscription_id).filter((s): s is string => !!s),
+            priceId,
+          );
         }
       }
       revalidatePath("/admin/plans");

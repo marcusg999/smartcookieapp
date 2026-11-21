@@ -106,7 +106,4 @@ export function ChipToggle({
   );
 }
 
-export const formatCents = (cents: number | null | undefined, currency = "usd") =>
-  cents === null || cents === undefined
-    ? "–"
-    : new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+export { formatCents } from "@/lib/money";

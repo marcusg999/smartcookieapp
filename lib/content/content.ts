@@ -69,7 +69,8 @@ export class Content {
     const value = this.values[key] as Partial<Cta> | undefined;
     return {
       label: typeof value?.label === "string" ? value.label : "",
-      href: typeof value?.href === "string" ? value.href : "/",
+      // Re-checked at render: only site-relative, http(s) or mailto links.
+      href: typeof value?.href === "string" && /^(https?:\/\/|mailto:|\/(?!\/))/.test(value.href) ? value.href : "/",
     };
   }
 

@@ -12,7 +12,13 @@ const href = z
 
 export const ctaSchema = z.object({ label: z.string().trim().min(1, "Button text can't be empty.").max(60), href });
 export const stepsSchema = z
-  .array(z.object({ title: z.string().trim().min(1).max(80), body: z.string().trim().max(300), bubble: z.string().trim().max(60).optional().default("") }))
+  .array(
+    z.object({
+      title: z.string().trim().min(1).max(80),
+      body: z.string().trim().max(300),
+      bubble: z.string().trim().max(60).optional().default(""),
+    }),
+  )
   .min(1)
   .max(6);
 

@@ -39,7 +39,10 @@ export default async function SettingsPage() {
   };
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <PageHeader title="Settings" description="Your business details, brand, ordering rules and switches. Tax changes ask for your authenticator code." />
+      <PageHeader
+        title="Settings"
+        description="Your business details, brand, ordering rules and switches. Tax changes ask for your authenticator code."
+      />
       <SettingsForm settings={settings} />
     </div>
   );

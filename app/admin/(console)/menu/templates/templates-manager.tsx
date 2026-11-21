@@ -99,7 +99,7 @@ export function TemplatesManager({
         <Button
           onClick={async () => {
             const r = await saveRotation({ template_ids: cycle, anchor_week: anchor || null, weeks_ahead: ahead });
-            r.ok ? toast.success(r.message) : toast.error(r.message);
+            toast[r.ok ? "success" : "error"](r.message);
             router.refresh();
           }}
         >
@@ -144,7 +144,7 @@ export function TemplatesManager({
                 confirmLabel="Archive template"
                 onConfirm={async () => {
                   const r = await archiveTemplate({ id: t.id });
-                  r.ok ? toast.success(r.message) : toast.error(r.message);
+                  toast[r.ok ? "success" : "error"](r.message);
                   router.refresh();
                 }}
               />

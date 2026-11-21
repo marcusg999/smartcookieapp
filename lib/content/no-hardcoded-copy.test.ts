@@ -1,0 +1,59 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+import ts from "typescript";
+import { describe, expect, it } from "vitest";
+
+/**
+ * Phase 4: customer-facing pages must not hard-code copy. Every sentence in
+ * JSX under app/(marketing) and app/(family) must come from content_blocks
+ * (lib/content). Anything with two or more words counts as a sentence.
+ */
+const ROOTS = ["app/(marketing)", "app/(family)"];
+
+// Security/privacy account screens: system copy rebuilt with the family
+// experience in Phase 5 (docs/phase-4.md, known gaps).
+const ALLOW_FILES = new Set(["app/(family)/account/security/page.tsx", "app/(family)/account/privacy/page.tsx"]);
+
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? walk(path) : path.endsWith(".tsx") ? [path] : [];
+  });
+}
+
+const isSentence = (text: string) => /[A-Za-z]{2,}[^A-Za-z]+[A-Za-z]{2,}/.test(text.replace(/\s+/g, " ").trim());
+
+export function findLiteralCopy(file: string, source: string): string[] {
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const hits: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxText(node) && isSentence(node.text)) hits.push(node.text.trim());
+    // {"Some sentence"} directly inside JSX
+    if (
+      ts.isJsxExpression(node) &&
+      node.expression &&
+      ts.isStringLiteral(node.expression) &&
+      ts.isJsxElement(node.parent) &&
+      isSentence(node.expression.text)
+    ) {
+      hits.push(node.expression.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return hits;
+}
+
+describe("no hard-coded customer copy", () => {
+  it("flags literal sentences", () => {
+    expect(findLiteralCopy("x.tsx", "const A = () => <p>Hello there friend</p>;")).toEqual(["Hello there friend"]);
+    expect(findLiteralCopy("x.tsx", "const A = () => <p>{c.text('k')} · 3</p>;")).toEqual([]);
+  });
+
+  for (const file of ROOTS.flatMap(walk).filter((f) => !ALLOW_FILES.has(f))) {
+    it(`${file} has no literal sentences`, () => {
+      expect(findLiteralCopy(file, readFileSync(file, "utf8"))).toEqual([]);
+    });
+  }
+});

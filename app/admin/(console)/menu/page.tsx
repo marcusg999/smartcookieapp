@@ -2,7 +2,7 @@ import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState, PageHeader, StatusPill } from "@/components/admin/page-header";
-import { formatCents } from "@/components/admin/fields";
+import { formatCents } from "@/lib/money";
 import { MealImage } from "@/components/menu/meal-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

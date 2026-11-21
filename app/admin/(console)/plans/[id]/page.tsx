@@ -39,13 +39,26 @@ export default async function PlanPage({ params }: PageProps<"/admin/plans/[id]"
   if (!isNew) {
     const { data } = await (await createClient()).from("plans").select("*").eq("id", id).maybeSingle();
     if (!data) notFound();
-    const { slug: _s, created_at: _c, updated_at: _u, archived_at: _a, stripe_product_id: _p, stripe_price_id: _sp, currency: _cur, sort_order: _o, ...rest } = data;
+    const {
+      slug: _s,
+      created_at: _c,
+      updated_at: _u,
+      archived_at: _a,
+      stripe_product_id: _p,
+      stripe_price_id: _sp,
+      currency: _cur,
+      sort_order: _o,
+      ...rest
+    } = data;
     plan = { ...rest, description_rich: rest.description_rich ?? undefined } as typeof plan;
     subscribers = await countActiveSubscribers(id);
   }
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <PageHeader title={isNew ? "New plan" : plan.name} description="Answer the questions; the preview on the right shows what customers will see. Saving asks for your authenticator code." />
+      <PageHeader
+        title={isNew ? "New plan" : plan.name}
+        description="Answer the questions; the preview on the right shows what customers will see. Saving asks for your authenticator code."
+      />
       <PlanBuilder plan={plan} subscribers={subscribers} />
     </div>
   );

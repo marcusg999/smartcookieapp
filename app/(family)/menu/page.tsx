@@ -1,62 +1,123 @@
-import { ViewTransition } from "react";
+import Link from "next/link";
 
-import { DayCard } from "@/components/menu/day-card";
 import { MealCard } from "@/components/menu/meal-card";
-import { DEMO_WEEK, demoDay } from "@/lib/demo/menu";
+import { RichText } from "@/components/rich-text";
+import { getUser } from "@/lib/auth/guards";
+import { getContent } from "@/lib/content/content";
+import { getPublicSettings } from "@/lib/content/settings";
+import { getPublishedWeeks, getWeekForPreview, type PublicWeek } from "@/lib/menu/queries";
+import { formatDay, formatInZone } from "@/lib/time";
 
-export const metadata = { title: "This week's menu" };
+export const metadata = { title: "Menu" };
 
 const TILTS = [-1.2, 1.4, -0.8];
+const UUID = /^[0-9a-f-]{36}$/i;
 
 export default async function MenuPage({ searchParams }: PageProps<"/menu">) {
-  const params = await searchParams;
-  const day = demoDay(typeof params.day === "string" ? params.day : undefined);
+  const sp = await searchParams;
+  const [c, settings, published] = await Promise.all([getContent(), getPublicSettings(), getPublishedWeeks()]);
+
+  // Owner preview of an unpublished week (/menu?preview=<id>), read with the
+  // owner's own session so RLS decides; everyone else sees published weeks.
+  let preview: PublicWeek | null = null;
+  if (typeof sp.preview === "string" && UUID.test(sp.preview)) {
+    const user = await getUser();
+    if (user?.aal === "aal2" && user.roles.includes("owner")) preview = await getWeekForPreview(sp.preview);
+  }
+  const weeks = preview ? [preview] : published;
+  const week = weeks.find((w) => w.id === sp.week) ?? weeks[0];
+  const meals = (week?.meals ?? []).filter((m) => m.available_for !== "schools");
+  const labels = {
+    contains: c.text("menu.contains_label"),
+    mayContain: c.text("menu.may_contain_label"),
+    noAllergens: c.text("menu.no_allergens_label"),
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl">
+      {preview ? (
+        <p role="status" className="mb-6 rounded-xl border-2 border-ink bg-accent px-4 py-2 font-semibold">
+          {c.text("banner.preview_mode")}
+        </p>
+      ) : null}
       <div className="grid grid-cols-12 items-end gap-4">
         <h1 className="col-span-12 text-5xl leading-[0.95] font-black md:col-span-8 md:text-7xl">
-          This week&apos;s <span className="italic">menu</span>
+          {c.text("menu.title")}
         </h1>
-        <p className="col-span-12 text-muted-foreground md:col-span-4 md:pb-2">
-          Sample menu while the kitchen menu is being set up.
-        </p>
+        <p className="col-span-12 text-muted-foreground md:col-span-4 md:pb-2">{c.text("menu.subtitle")}</p>
       </div>
 
-      <nav aria-label="Days of the week" className="-mx-4 mt-8 overflow-x-auto px-4 pb-4">
-        <ul className="flex gap-3 md:grid md:grid-cols-5">
-          {DEMO_WEEK.map((d, i) => (
-            <li key={d.slug} className="w-24 shrink-0 md:w-auto">
-              <DayCard
-                day={d}
-                href={`/menu?day=${d.slug}`}
-                compact
-                active={d.slug === day.slug}
-                tilt={d.slug === day.slug ? 0 : i % 2 ? 1.5 : -1.5}
-              />
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {!settings.ordering_enabled ? (
+        <p
+          role="status"
+          className="mt-6 rounded-xl border-2 border-ink bg-orange px-4 py-3 font-semibold shadow-ink-sm"
+        >
+          {settings.ordering_paused_message}
+        </p>
+      ) : null}
 
-      <ViewTransition key={day.slug} enter="page-in" exit="page-out" default="none">
-        <section aria-labelledby="day-heading" className="mt-10">
-          <h2 id="day-heading" className="text-4xl font-black md:text-5xl">
-            {day.label}: <span className="italic">{day.headline}</span>
-          </h2>
+      {weeks.length > 1 ? (
+        <nav aria-label="Menu weeks" className="-mx-4 mt-8 overflow-x-auto px-4 pb-2">
+          <ul className="flex gap-2">
+            {weeks.map((w) => (
+              <li key={w.id} className="shrink-0">
+                <Link
+                  href={`/menu?week=${w.id}`}
+                  scroll={false}
+                  aria-current={w.id === week?.id ? "page" : undefined}
+                  className={`block rounded-full border-2 border-ink px-4 py-1.5 font-semibold ${w.id === week?.id ? "bg-orange shadow-ink-sm" : "bg-paper"}`}
+                >
+                  {formatDay(w.week_start, { month: "short", day: "numeric" })}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
+
+      {!week || meals.length === 0 ? (
+        <p className="mt-10 rounded-2xl border-2 border-dashed border-ink/40 bg-paper p-8 text-center text-lg">
+          {c.text("menu.empty")}
+        </p>
+      ) : (
+        <section aria-labelledby="week-heading" className="mt-8">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="week-heading" className="text-3xl font-black md:text-4xl">
+              {formatDay(week.week_start, { month: "long", day: "numeric" })}
+            </h2>
+            {week.cutoff ? (
+              <p className="rounded-full border-2 border-ink bg-paper px-3 py-1 text-sm font-bold">
+                {c.text("menu.cutoff_label", {
+                  date: formatInZone(week.cutoff, settings.timezone, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }),
+                })}
+              </p>
+            ) : null}
+          </div>
+          {week.notes_to_families ? <p className="mt-3 max-w-2xl leading-relaxed">{week.notes_to_families}</p> : null}
           <div className="mt-8 grid gap-8 sm:grid-cols-2">
-            {day.meals.map((meal, i) => (
-              <MealCard key={meal.id} meal={meal} tilt={TILTS[i % TILTS.length]} className={i % 2 ? "sm:mt-10" : ""} />
+            {meals.map((meal, i) => (
+              <MealCard
+                key={meal.id}
+                meal={meal}
+                labels={labels}
+                tilt={TILTS[i % TILTS.length]}
+                className={i % 2 ? "sm:mt-10" : ""}
+              />
             ))}
           </div>
         </section>
-      </ViewTransition>
+      )}
 
-      <p className="mt-12 rounded-xl border-2 border-ink bg-paper p-4 text-sm leading-relaxed shadow-ink-sm">
-        <strong>Allergen note:</strong> every meal lists the allergens it contains. Our kitchen handles common
-        allergens, so we can&apos;t promise any meal is allergen-free. When you order, meals that clash with your
-        child&apos;s allergies are blocked.
-      </p>
+      <RichText
+        doc={c.rich("menu.allergen_disclaimer")}
+        className="mt-12 rounded-xl border-2 border-ink bg-paper p-4 text-sm leading-relaxed shadow-ink-sm"
+      />
     </div>
   );
 }

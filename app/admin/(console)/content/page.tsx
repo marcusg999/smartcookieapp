@@ -16,10 +16,18 @@ export default async function SiteTextPage({ searchParams }: PageProps<"/admin/c
   const group = CONTENT_GROUPS.find((g) => g.id === params.group) ?? CONTENT_GROUPS[0]!;
   const supabase = await createClient();
   const keys = group.items.map((i) => i.key);
-  const { data: blocks } = await supabase.from("content_blocks").select("id, key, draft_value, published_value, published_at").in("key", keys);
+  const { data: blocks } = await supabase
+    .from("content_blocks")
+    .select("id, key, draft_value, published_value, published_at")
+    .in("key", keys);
   const ids = (blocks ?? []).map((b) => b.id);
   const { data: versions } = ids.length
-    ? await supabase.from("content_versions").select("id, block_id, value, created_at").in("block_id", ids).order("created_at", { ascending: false }).limit(200)
+    ? await supabase
+        .from("content_versions")
+        .select("id, block_id, value, created_at")
+        .in("block_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(200)
     : { data: [] };
 
   const state: Record<string, BlockState> = {};
@@ -29,10 +37,15 @@ export default async function SiteTextPage({ searchParams }: PageProps<"/admin/c
       draft: b?.draft_value ?? b?.published_value ?? null,
       published: b?.published_value ?? null,
       publishedAt: b?.published_at ?? null,
-      versions: (versions ?? []).filter((v) => v.block_id === b?.id).slice(0, 8).map((v) => ({ id: v.id, value: v.value, created_at: v.created_at })),
+      versions: (versions ?? [])
+        .filter((v) => v.block_id === b?.id)
+        .slice(0, 8)
+        .map((v) => ({ id: v.id, value: v.value, created_at: v.created_at })),
     };
   }
-  const pendingAll = (blocks ?? []).filter((b) => JSON.stringify(b.draft_value) !== JSON.stringify(b.published_value) && b.draft_value !== null).length;
+  const pendingAll = (blocks ?? []).filter(
+    (b) => JSON.stringify(b.draft_value) !== JSON.stringify(b.published_value) && b.draft_value !== null,
+  ).length;
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -41,7 +54,11 @@ export default async function SiteTextPage({ searchParams }: PageProps<"/admin/c
         description="Every word customers see. Edit, save a draft, preview it on the real page, then publish. Old versions are kept so you can undo."
         actions={
           <Button asChild variant="outline">
-            <a href={`/api/preview?path=${group.id === "menu" ? "/menu" : group.id === "account" ? "/account" : "/"}`} target="_blank" rel="noreferrer">
+            <a
+              href={`/api/preview?path=${group.id === "menu" ? "/menu" : group.id === "account" ? "/account" : "/"}`}
+              target="_blank"
+              rel="noreferrer"
+            >
               <Eye aria-hidden="true" /> Preview drafts
             </a>
           </Button>

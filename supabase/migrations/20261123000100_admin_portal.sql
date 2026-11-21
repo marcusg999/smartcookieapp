@@ -146,7 +146,10 @@ create policy "Owner deletes media (AAL2)" on storage.objects
   for delete to authenticated using (bucket_id = 'media' and public.is_owner_aal2());
 
 revoke execute on function public.record_menu_item_price(), public.protect_top9_allergens() from public, anon, authenticated;
+revoke execute on function public.media_usage_count(text) from public, anon;
 grant execute on function public.media_usage_count(text) to authenticated;
+-- Notes and credits are append-only records: no edits or deletes, for anyone.
+revoke update, delete on public.customer_notes, public.account_credits from authenticated;
 
 -- ── Brand colours from the Smart Cookie logo (owner-editable in Settings) ───
 alter table public.site_settings

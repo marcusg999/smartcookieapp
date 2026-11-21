@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
   const draft = await draftMode();
   if (request.nextUrl.searchParams.get("exit") === "1") {
     draft.disable();
-    return NextResponse.redirect(new URL(safeNext(request.nextUrl.searchParams.get("next"), "/admin/content"), request.url));
+    return NextResponse.redirect(
+      new URL(safeNext(request.nextUrl.searchParams.get("next"), "/admin/content"), request.url),
+    );
   }
   draft.enable();
   return NextResponse.redirect(new URL(safeNext(request.nextUrl.searchParams.get("path"), "/"), request.url));
