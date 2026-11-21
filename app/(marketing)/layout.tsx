@@ -4,16 +4,20 @@ import { ViewTransition } from "react";
 import { HalftoneDefs } from "@/components/art/cartoons";
 import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
+import { getContent } from "@/lib/content/content";
+import { getPublicSettings } from "@/lib/content/settings";
 
-// Marketing shell. Nav and footer copy are placeholders; from Phase 3 all
-// public text comes from the CMS (CLAUDE.md §1, guiding principle).
-const nav = [
-  { href: "/menu", label: "This week's menu" },
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/#schools", label: "For schools" },
-];
-
-export default function MarketingLayout({ children }: LayoutProps<"/">) {
+// Marketing shell. All words come from the CMS (CLAUDE.md §1, guiding principle).
+export default async function MarketingLayout({ children }: LayoutProps<"/">) {
+  const [c, settings] = await Promise.all([getContent(), getPublicSettings().catch(() => null)]);
+  const nav = [
+    { href: "/menu", label: c.text("nav.menu") },
+    { href: "/#how-it-works", label: c.text("nav.how_it_works") },
+    { href: "/#schools", label: c.text("nav.schools") },
+  ];
+  const social = Object.entries(settings?.social_links ?? {}).filter(
+    ([, url]) => typeof url === "string" && url.startsWith("https://"),
+  );
   return (
     <div className="flex min-h-full flex-1 flex-col" data-shell="marketing">
       <HalftoneDefs />
@@ -33,10 +37,10 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-              <Link href="/sign-in">Sign in</Link>
+              <Link href="/sign-in">{c.text("nav.sign_in")}</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/sign-up">Get started</Link>
+              <Link href="/sign-up">{c.text("nav.get_started")}</Link>
             </Button>
           </div>
         </div>
@@ -50,7 +54,7 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
             </Link>
           ))}
           <Link href="/sign-in" className="shrink-0 rounded-sm sm:hidden">
-            Sign in
+            {c.text("nav.sign_in")}
           </Link>
         </nav>
       </header>
@@ -61,13 +65,33 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
       </ViewTransition>
       <footer className="border-t-2 border-ink bg-ink text-paper">
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:grid-cols-12">
-          <p className="font-display text-3xl leading-tight italic sm:col-span-5">Smart Cookie</p>
+          <p className="font-display text-3xl leading-tight italic sm:col-span-5">
+            {settings?.business_name ?? "Smart Cookie"}
+          </p>
           <div className="space-y-2 text-sm text-paper/85 sm:col-span-7">
-            <p>Healthy, home-cooked meals for kids. Made fresh every week.</p>
-            <p>
-              Allergen information is listed on every meal. We take allergies seriously, but our kitchen handles common
-              allergens, so we never promise &ldquo;allergen-free&rdquo;.
-            </p>
+            <p>{c.text("footer.tagline")}</p>
+            <p>{c.text("footer.allergen_note")}</p>
+            {settings?.contact_email || settings?.contact_phone ? (
+              <p className="flex flex-wrap gap-x-4">
+                {settings.contact_email ? (
+                  <a className="underline" href={`mailto:${settings.contact_email}`}>
+                    {settings.contact_email}
+                  </a>
+                ) : null}
+                {settings.contact_phone ? <span>{settings.contact_phone}</span> : null}
+              </p>
+            ) : null}
+            {social.length ? (
+              <ul className="flex flex-wrap gap-x-4">
+                {social.map(([name, url]) => (
+                  <li key={name}>
+                    <a className="capitalize underline" href={url} rel="noopener noreferrer" target="_blank">
+                      {name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         </div>
       </footer>

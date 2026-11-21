@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
+import Link from "next/link";
 import { connection } from "next/server";
+
+import { brandCss, getPublicSettings, type PublicSettings } from "@/lib/content/settings";
 
 import "./globals.css";
 
@@ -24,7 +28,6 @@ const sourceSans = localFont({
 });
 
 export const metadata: Metadata = {
-  // Placeholder copy. From Phase 3 on, site text comes from the CMS (site_settings).
   title: { default: "Smart Cookie", template: "%s · Smart Cookie" },
   description: "Healthy, home-cooked meals for kids, delivered to families and schools.",
   applicationName: "Smart Cookie",
@@ -33,20 +36,36 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
-export const viewport: Viewport = {
-  // Placeholder; will be pulled from site_settings with the brand.
-  themeColor: "#ff5b14",
-  width: "device-width",
-  initialScale: 1,
-};
+const FALLBACK_INK = "#1f3b2d";
+
+/** Settings, or null if the database is unreachable (the site still renders with the CSS defaults). */
+async function safeSettings(): Promise<PublicSettings | null> {
+  try {
+    return await getPublicSettings();
+  } catch {
+    return null;
+  }
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  const settings = await safeSettings();
+  const bg = settings?.brand_colors?.background;
+  return { themeColor: bg && /^#[0-9a-f]{6}$/i.test(bg) ? bg : FALLBACK_INK, width: "device-width", initialScale: 1 };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Render every request dynamically so each response carries a fresh CSP
   // nonce (see proxy.ts and lib/security/csp.ts).
   await connection();
+  const [settings, nonce] = await Promise.all([safeSettings(), headers().then((h) => h.get("x-nonce") ?? undefined)]);
+  const css = settings ? brandCss(settings.brand_colors ?? {}) : "";
+  const announcement = settings?.announcement?.enabled && settings.announcement.text ? settings.announcement : null;
+  const link = announcement?.link && /^(https:\/\/|\/(?!\/))/.test(announcement.link) ? announcement.link : null;
 
   return (
     <html lang="en" className={`h-full ${bodoni.variable} ${sourceSans.variable}`}>
+      {/* Owner-chosen brand colours (Settings) override the CSS defaults. Only validated hex values are emitted. */}
+      {css ? <style nonce={nonce}>{css}</style> : null}
       <body className="flex min-h-full flex-col">
         <a
           href="#main"
@@ -54,6 +73,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
+        {announcement ? (
+          <div
+            role="region"
+            aria-label="Announcement"
+            className="border-b-2 border-ink bg-orange px-4 py-2 text-center text-sm font-semibold"
+          >
+            {link ? (
+              <Link href={link} className="underline underline-offset-4">
+                {announcement.text}
+              </Link>
+            ) : (
+              announcement.text
+            )}
+          </div>
+        ) : null}
         {children}
       </body>
     </html>

@@ -29,7 +29,9 @@ const FOODS = [
   { key: "carrots", from: 0.57, to: 0.69, spin: 16 },
 ] as const;
 
-export function PackTheTrayHero({ children }: { children: ReactNode }) {
+export type HeroCopy = { caption: string; captionDone: string; stamp: string; scrollHint: string };
+
+export function PackTheTrayHero({ children, copy }: { children: ReactNode; copy: HeroCopy }) {
   const section = useRef<HTMLElement>(null);
   const outline = useRef<SVGPathElement>(null);
   const dividers = useRef<SVGGElement>(null);
@@ -200,7 +202,7 @@ export function PackTheTrayHero({ children }: { children: ReactNode }) {
                 className="absolute -bottom-5 -left-3 rounded-md border-[3px] border-ink bg-orange px-3 py-0.5 font-display text-2xl font-black tracking-tight text-ink italic shadow-ink sm:-bottom-6 sm:-left-4 sm:px-4 sm:py-1 sm:text-4xl"
                 style={{ opacity: 0 }}
               >
-                PACKED!
+                {copy.stamp}
               </div>
             </div>
 
@@ -209,10 +211,8 @@ export function PackTheTrayHero({ children }: { children: ReactNode }) {
               data-done="false"
               className="group mt-8 hidden text-center text-sm font-semibold tracking-wide text-muted-foreground uppercase sm:block md:mt-10"
             >
-              <span className="group-data-[done=true]:hidden">Monday · Mac &amp; cheese, broccoli, apple, carrots</span>
-              <span className="hidden group-data-[done=true]:inline">
-                Lunch packed. Allergies checked for every child.
-              </span>
+              <span className="group-data-[done=true]:hidden">{copy.caption}</span>
+              <span className="hidden group-data-[done=true]:inline">{copy.captionDone}</span>
             </p>
           </div>
         </div>
@@ -222,7 +222,7 @@ export function PackTheTrayHero({ children }: { children: ReactNode }) {
           aria-hidden="true"
           className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border-2 border-ink bg-paper px-4 py-1.5 text-sm font-semibold shadow-ink-sm motion-reduce:hidden"
         >
-          Scroll to pack lunch <ArrowDown className="size-4 animate-bounce" />
+          {copy.scrollHint} <ArrowDown className="size-4 animate-bounce" />
         </p>
       </div>
     </section>

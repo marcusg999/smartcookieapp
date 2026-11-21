@@ -4,18 +4,19 @@ import { ViewTransition } from "react";
 import { HalftoneDefs } from "@/components/art/cartoons";
 import { Logo } from "@/components/layout/logo";
 import { NavLink } from "@/components/layout/nav-link";
+import { getContent } from "@/lib/content/content";
 
 // Family shell. Mobile-first: a bottom tab bar on phones (where most parents
-// order) and a top nav on larger screens. Auth guard arrives in Phase 2.
-const tabs = [
-  { href: "/menu", label: "Menu", icon: CalendarDays },
-  { href: "/orders", label: "Orders", icon: ClipboardList },
-  { href: "/cart", label: "Cart", icon: ShoppingBasket },
-  { href: "/favorites", label: "Favorites", icon: Heart },
-  { href: "/account", label: "Account", icon: User },
-];
-
-export default function FamilyLayout({ children }: LayoutProps<"/">) {
+// order) and a top nav on larger screens. Tab labels come from the CMS.
+export default async function FamilyLayout({ children }: LayoutProps<"/">) {
+  const c = await getContent();
+  const tabs = [
+    { href: "/menu", label: c.text("nav.tab_menu"), icon: CalendarDays },
+    { href: "/orders", label: c.text("nav.tab_orders"), icon: ClipboardList },
+    { href: "/cart", label: c.text("nav.tab_cart"), icon: ShoppingBasket },
+    { href: "/favorites", label: c.text("nav.tab_favorites"), icon: Heart },
+    { href: "/account", label: c.text("nav.tab_account"), icon: User },
+  ];
   return (
     <div className="flex min-h-full flex-1 flex-col" data-shell="family">
       <HalftoneDefs />

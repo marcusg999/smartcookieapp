@@ -1,6 +1,6 @@
 import "server-only";
 
-import { notFound, redirect } from "next/navigation";
+import { forbidden, notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { env } from "@/lib/env";
@@ -68,10 +68,16 @@ export async function requireRole(roles: readonly AppRole[], options: { next?: s
   return user;
 }
 
-/** For admin pages: staff role + AAL2, else 404 / MFA redirect. */
+/**
+ * For admin pages: staff role + AAL2. Non-staff get a 404 (the admin area
+ * doesn't reveal itself); staff whose role can't use this page get a 403;
+ * staff below AAL2 go to the MFA flow.
+ */
 export async function requireStaffAAL2(roles: readonly AppRole[] = ["kitchen", "ops", "owner"]): Promise<AuthUser> {
-  const user = await requireRole(roles);
-  return requireAAL2(user);
+  const user = await requireRole(["kitchen", "ops", "owner"]);
+  const verified = await requireAAL2(user);
+  if (!verified.roles.some((role) => roles.includes(role))) forbidden();
+  return verified;
 }
 
 export async function requireAAL2(existing?: AuthUser): Promise<AuthUser> {

@@ -5,13 +5,15 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens: "Saturday-morning cartoon, printed on concrete"
- * (docs/design-contract.md). Placeholder brand until the real Smart Cookie
- * brand is driven from `site_settings`; components use semantic tokens only.
+ * Design tokens. Defaults follow the Smart Cookie logo (icing pink, script
+ * green, raspberry, cookie gold); the owner can change them in
+ * /admin/settings (site_settings.brand_colors → these CSS variables).
+ * Token names (--orange, --concrete, --paper) are historical: they mean
+ * "primary fill", "page background" and "card surface".
  *
- * Contrast (WCAG AA): ink on concrete 12.7:1, ink on paper 16.4:1, ink on
- * orange 6.0:1, muted on concrete 6.4:1, allergy red on paper 5.2:1.
- * Safety orange is a FILL colour: never use it as text on concrete or paper.
+ * Contrast (WCAG AA): green on blush 10.8:1, green on cream 11.7:1, green on
+ * pink 7.0:1, raspberry on cream 5.7:1, muted on blush 7.4:1.
+ * The pink fill is never used for text.
  */
 :root {
   --radius: 0.9rem;
@@ -22,12 +24,14 @@
   --font-display: var(--font-bodoni), "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --concrete: #d9d5cd;
-  --paper: #f4f1ea;
-  --ink: #151311;
-  --orange: #ff5b14;
-  --orange-tint: #ffe2d3;
-  --rule: #b9b4aa;
+  --concrete: #fbeeea; /* blush page */
+  --paper: #fff9f5; /* cream cards */
+  --ink: #1f3b2d; /* logo green: text + outlines */
+  --orange: #f4b4b6; /* icing pink: fills, always with ink text */
+  --raspberry: #b3344b; /* emphasis accent (text OK on cream/blush) */
+  --cookie: #d4935a; /* decorative only */
+  --orange-tint: #fde3e2;
+  --rule: #e2c9c4;
 
   --background: var(--concrete);
   --foreground: var(--ink);
@@ -39,8 +43,8 @@
   --primary-foreground: var(--ink);
   --secondary: var(--paper);
   --secondary-foreground: var(--ink);
-  --muted: #e7e3db;
-  --muted-foreground: #4a4640;
+  --muted: #f6e6e2;
+  --muted-foreground: #5a4a48;
   --accent: var(--orange-tint);
   --accent-foreground: var(--ink);
   --destructive: #c8102e;
@@ -75,6 +79,8 @@
   --color-ink: var(--ink);
   --color-orange: var(--orange);
   --color-orange-tint: var(--orange-tint);
+  --color-raspberry: var(--raspberry);
+  --color-cookie: var(--cookie);
   --color-rule: var(--rule);
   /* Cartoon "printed" shadows: hard ink offsets, never soft blur. */
   --shadow-ink-sm: 2px 2px 0 0 var(--ink);
@@ -188,4 +194,36 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Rich text (CMS content and the admin editor). */
+.prose-sc > * + * {
+  margin-top: 0.75em;
+}
+.prose-sc h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+.prose-sc h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.prose-sc ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+}
+.prose-sc ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+}
+.prose-sc blockquote {
+  border-left: 4px solid var(--orange);
+  padding-left: 0.9rem;
+  font-style: italic;
+}
+.prose-sc a {
+  text-decoration: underline;
+  text-decoration-color: var(--raspberry);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
