@@ -143,22 +143,22 @@ select is((select count(*)::int from public.addresses), 1, 'parent reads only th
 select throws_ok($$ insert into public.orders (household_id, menu_week_id) select id, '80000000-0000-4000-8000-000000000001' from fx where k = 'hhA' $$,
   '42501', null, 'parent cannot insert orders directly');
 select throws_ok(
-  $$ select public.create_family_order((select id from fx where k = 'hhA'), '80000000-0000-4000-8000-000000000001',
-       '[{"child_id":"60000000-0000-4000-8000-000000000001","menu_item_id":"70000000-0000-4000-8000-000000000001"}]',
-       'delivery', '50000000-0000-4000-8000-000000000001') $$,
+  $$ select public.place_family_order((select id from fx where k = 'hhA'), '80000000-0000-4000-8000-000000000001',
+       '[{"child_id":"60000000-0000-4000-8000-000000000001","menu_item_id":"70000000-0000-4000-8000-000000000001","delivery_date":"2030-01-07"}]',
+       'delivery', '50000000-0000-4000-8000-000000000001', null, true) $$,
   'P0001', null, 'ordering a meal with a matching allergen is blocked');
 select lives_ok(
-  $$ insert into fx select 'orderA', public.create_family_order((select id from fx where k = 'hhA'), '80000000-0000-4000-8000-000000000001',
-       '[{"child_id":"60000000-0000-4000-8000-000000000002","menu_item_id":"70000000-0000-4000-8000-000000000001","quantity":2}]',
-       'delivery', '50000000-0000-4000-8000-000000000001') $$,
+  $$ insert into fx select 'orderA', public.place_family_order((select id from fx where k = 'hhA'), '80000000-0000-4000-8000-000000000001',
+       '[{"child_id":"60000000-0000-4000-8000-000000000002","menu_item_id":"70000000-0000-4000-8000-000000000001","delivery_date":"2030-01-07","quantity":2}]',
+       'delivery', '50000000-0000-4000-8000-000000000001', null, true) $$,
   'parent places an order through the server function');
 select is((select total_cents from public.orders where id = (select id from fx where k = 'orderA')), 2300,
   'order total is computed server-side (2 × 900 + 500 delivery)');
 select throws_ok($$ update public.orders set total_cents = 1 $$, '42501', null, 'parent cannot change order totals');
 select throws_ok(
-  $$ select public.create_family_order((select id from fx where k = 'hhA'), '80000000-0000-4000-8000-000000000001',
-       '[{"child_id":"60000000-0000-4000-8000-000000000003","menu_item_id":"70000000-0000-4000-8000-000000000002"}]',
-       'delivery', '50000000-0000-4000-8000-000000000001') $$,
+  $$ select public.place_family_order((select id from fx where k = 'hhA'), '80000000-0000-4000-8000-000000000001',
+       '[{"child_id":"60000000-0000-4000-8000-000000000003","menu_item_id":"70000000-0000-4000-8000-000000000002","delivery_date":"2030-01-07"}]',
+       'delivery', '50000000-0000-4000-8000-000000000001', null, true) $$,
   '23514', 'Unknown child', 'parent cannot order for a child in another household');
 select is((select count(*)::int from public.kitchen_order_lines), 0, 'parent sees nothing in the kitchen view');
 select throws_ok($$ insert into public.menu_items (name, slug, base_price_cents) values ('X', 'test-x', 1) $$,
