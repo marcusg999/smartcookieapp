@@ -5,6 +5,16 @@ Every table has Row Level Security enabled; see `supabase/migrations` and `docs/
 
 ```mermaid
 erDiagram
+  account_credits {
+    uuid id PK
+    uuid household_id FK
+    integer amount_cents
+    text currency
+    text reason
+    uuid order_id FK
+    uuid created_by FK
+    timestamptz created_at
+  }
   addresses {
     uuid id PK
     uuid household_id FK
@@ -59,6 +69,13 @@ erDiagram
     text kind
     timestamptz attempted_at
   }
+  carts {
+    uuid household_id PK
+    uuid menu_week_id PK
+    jsonb lines
+    uuid replaces_order_id FK
+    timestamptz updated_at
+  }
   child_allergens {
     uuid child_id PK
     uuid allergen_id PK
@@ -108,6 +125,14 @@ erDiagram
     uuid block_id FK
     jsonb value
     uuid created_by FK
+    timestamptz created_at
+  }
+  customer_notes {
+    uuid id PK
+    uuid household_id FK
+    uuid organization_id FK
+    text body
+    uuid author_id FK
     timestamptz created_at
   }
   delivery_zones {
@@ -192,6 +217,9 @@ erDiagram
     text stripe_customer_id
     timestamptz created_at
     timestamptz updated_at
+    timestamptz onboarded_at
+    enum ordering_preference
+    uuid preferred_plan_id FK
   }
   invoices {
     uuid id PK
@@ -242,6 +270,17 @@ erDiagram
     boolean is_primary
     timestamptz created_at
   }
+  menu_item_price_history {
+    uuid id PK
+    uuid menu_item_id FK
+    integer base_price_cents
+    integer school_price_cents
+    text stripe_price_id
+    text stripe_school_price_id
+    uuid changed_by FK
+    timestamptz active_from
+    timestamptz active_to
+  }
   menu_items {
     uuid id PK
     text name
@@ -261,6 +300,8 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
     timestamptz archived_at
+    text stripe_price_id
+    text stripe_school_price_id
   }
   menu_template_items {
     uuid id PK
@@ -300,6 +341,7 @@ erDiagram
     uuid generated_from_template_id FK
     timestamptz created_at
     timestamptz updated_at
+    timestamptz auto_filled_at
   }
   notifications_log {
     uuid id PK
@@ -309,6 +351,8 @@ erDiagram
     text provider_id
     text error
     timestamptz sent_at
+    uuid household_id FK
+    jsonb payload
   }
   order_items {
     uuid id PK
@@ -473,6 +517,7 @@ erDiagram
     smallint rotation_weeks_ahead
     timestamptz updated_at
     uuid updated_by FK
+    text ordering_paused_message
   }
   standing_orders {
     uuid id PK
@@ -525,6 +570,7 @@ erDiagram
     boolean cancel_at_period_end
     timestamptz created_at
     timestamptz updated_at
+    uuid pending_plan_id FK
   }
   testimonials {
     uuid id PK
@@ -542,9 +588,21 @@ erDiagram
     uuid granted_by FK
     timestamptz granted_at
   }
+  zone_waitlist {
+    uuid id PK
+    uuid household_id FK
+    text email
+    text zip
+    timestamptz created_at
+  }
+  households ||--o{ account_credits : "household_id"
+  orders ||--o{ account_credits : "order_id"
   households ||--o{ addresses : "household_id"
   children ||--o{ allergy_overrides : "child_id"
   menu_items ||--o{ allergy_overrides : "menu_item_id"
+  households ||--o{ carts : "household_id"
+  menu_weeks ||--o{ carts : "menu_week_id"
+  orders ||--o{ carts : "replaces_order_id"
   allergens ||--o{ child_allergens : "allergen_id"
   children ||--o{ child_allergens : "child_id"
   classrooms ||--o{ children : "classroom_id"
@@ -552,24 +610,29 @@ erDiagram
   organizations ||--o{ children : "school_id"
   organizations ||--o{ classrooms : "organization_id"
   content_blocks ||--o{ content_versions : "block_id"
+  households ||--o{ customer_notes : "household_id"
+  organizations ||--o{ customer_notes : "organization_id"
   children ||--o{ favorites : "child_id"
   households ||--o{ favorites : "household_id"
   menu_items ||--o{ favorites : "menu_item_id"
   households ||--o{ household_members : "household_id"
   addresses ||--o{ households : "default_address_id"
   delivery_zones ||--o{ households : "default_zone_id"
+  plans ||--o{ households : "preferred_plan_id"
   organizations ||--o{ invoices : "organization_id"
   allergens ||--o{ menu_item_allergens : "allergen_id"
   menu_items ||--o{ menu_item_allergens : "menu_item_id"
   dietary_badges ||--o{ menu_item_badges : "badge_id"
   menu_items ||--o{ menu_item_badges : "menu_item_id"
   menu_items ||--o{ menu_item_images : "menu_item_id"
+  menu_items ||--o{ menu_item_price_history : "menu_item_id"
   menu_categories ||--o{ menu_items : "category_id"
   menu_items ||--o{ menu_template_items : "menu_item_id"
   menu_templates ||--o{ menu_template_items : "menu_template_id"
   menu_items ||--o{ menu_week_items : "menu_item_id"
   menu_weeks ||--o{ menu_week_items : "menu_week_id"
   menu_templates ||--o{ menu_weeks : "generated_from_template_id"
+  households ||--o{ notifications_log : "household_id"
   allergy_overrides ||--o{ order_items : "allergy_override_id"
   children ||--o{ order_items : "child_id"
   classrooms ||--o{ order_items : "classroom_id"
@@ -587,8 +650,10 @@ erDiagram
   subscriptions ||--o{ subscription_allowances : "subscription_id"
   households ||--o{ subscriptions : "household_id"
   organizations ||--o{ subscriptions : "organization_id"
+  plans ||--o{ subscriptions : "pending_plan_id"
   plans ||--o{ subscriptions : "plan_id"
   organizations ||--o{ user_roles : "organization_id"
+  households ||--o{ zone_waitlist : "household_id"
 ```
 
 Also in the database (not drawn): `auth.users` (referenced by profiles, user_roles, household_members and others),
