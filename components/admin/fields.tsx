@@ -47,12 +47,14 @@ export function MoneyInput({
   cents,
   onChange,
   allowEmpty = false,
+  allowNegative = false,
   ...rest
 }: {
   id: string;
   cents: number | null;
   onChange: (cents: number | null) => void;
   allowEmpty?: boolean;
+  allowNegative?: boolean;
   "aria-describedby"?: string;
 }) {
   return (
@@ -66,7 +68,7 @@ export function MoneyInput({
         className="pl-7"
         defaultValue={cents === null ? "" : (cents / 100).toFixed(2)}
         onChange={(e) => {
-          const raw = e.target.value.replace(/[^0-9.]/g, "");
+          const raw = e.target.value.replace(allowNegative ? /[^0-9.-]/g : /[^0-9.]/g, "");
           if (raw === "" && allowEmpty) return onChange(null);
           const value = Math.round(Number.parseFloat(raw || "0") * 100);
           onChange(Number.isFinite(value) ? value : 0);
