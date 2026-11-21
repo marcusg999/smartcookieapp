@@ -47,7 +47,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         <SignInForm next={nextParam || undefined} />
         <p className="text-center text-sm text-muted-foreground">
           New to Smart Cookie?{" "}
-          <Link href="/sign-up" className="font-medium text-primary underline-offset-4 hover:underline">
+          <Link
+            href="/sign-up"
+            className="font-medium text-ink underline decoration-orange decoration-[3px] underline-offset-4 hover:decoration-ink"
+          >
             Create an account
           </Link>
         </p>

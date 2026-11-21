@@ -119,7 +119,7 @@ export default async function AccountSecurityPage() {
               <li key={s.id} className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:justify-between">
                 <span>
                   {describeAgent(s.user_agent)}
-                  {s.is_current ? <span className="font-medium text-primary"> · this device</span> : null}
+                  {s.is_current ? <span className="font-bold text-ink"> · this device</span> : null}
                 </span>
                 <span className="text-muted-foreground">
                   Active {new Date(s.updated_at ?? s.created_at).toLocaleString()}

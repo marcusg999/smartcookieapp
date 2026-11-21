@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 // Public shells. The signed-in shells (family account, school, admin) are
 // covered by e2e/auth.spec.ts.
 const shells = [
-  { path: "/", shell: "marketing", heading: /home-cooked meals/i },
+  { path: "/", shell: "marketing", heading: /Lunch, handled/i },
   { path: "/menu", shell: "family", heading: "This week's menu" },
   { path: "/sign-in", shell: "auth", heading: "Sign in" },
   { path: "/sign-up", shell: "auth", heading: "Create your account" },

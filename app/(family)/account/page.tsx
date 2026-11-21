@@ -43,7 +43,10 @@ export default async function AccountPage() {
             </CardTitle>
             <CardDescription>
               Use Face ID, Touch ID or your device PIN instead of a password.{" "}
-              <Link href="/account/security" className="font-medium text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/account/security"
+                className="font-medium text-ink underline decoration-orange decoration-[3px] underline-offset-4 hover:decoration-ink"
+              >
                 Add a passkey
               </Link>
             </CardDescription>

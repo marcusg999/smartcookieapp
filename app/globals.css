@@ -5,64 +5,81 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens. PLACEHOLDER palette: warm, friendly, food-forward
- * (tomato-orange, sage, cream). The real Smart Cookie brand replaces these
- * later, driven from `site_settings` by overriding these CSS variables at
- * runtime, so components must use the semantic tokens (bg-primary,
- * text-muted-foreground, …), never raw colors.
+ * Design tokens: "Saturday-morning cartoon, printed on concrete"
+ * (docs/design-contract.md). Placeholder brand until the real Smart Cookie
+ * brand is driven from `site_settings`; components use semantic tokens only.
  *
- * Contrast (WCAG AA): primary-foreground on primary ≈ 5.2:1;
- * foreground on background ≈ 14:1; muted-foreground on background ≈ 6:1.
+ * Contrast (WCAG AA): ink on concrete 12.7:1, ink on paper 16.4:1, ink on
+ * orange 6.0:1, muted on concrete 6.4:1, allergy red on paper 5.2:1.
+ * Safety orange is a FILL colour: never use it as text on concrete or paper.
  */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.9rem;
+  /* Height of the sticky marketing header (two rows on mobile). */
+  --header-h: 6.4rem;
 
-  --font-sans:
-    ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: ui-rounded, "SF Pro Rounded", Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-source-sans), "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-bodoni), "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --background: oklch(0.985 0.012 85); /* cream */
-  --foreground: oklch(0.26 0.03 50); /* cocoa */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.26 0.03 50);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.26 0.03 50);
-  --primary: oklch(0.553 0.195 38.402); /* tomato-orange */
-  --primary-foreground: oklch(0.99 0.005 85);
-  --secondary: oklch(0.95 0.03 85); /* warm oat */
-  --secondary-foreground: oklch(0.3 0.04 50);
-  --muted: oklch(0.955 0.018 85);
-  --muted-foreground: oklch(0.47 0.03 50);
-  --accent: oklch(0.93 0.045 145); /* sage */
-  --accent-foreground: oklch(0.3 0.06 150);
-  --destructive: oklch(0.505 0.213 27.518);
-  --destructive-foreground: oklch(0.99 0 0);
+  --concrete: #d9d5cd;
+  --paper: #f4f1ea;
+  --ink: #151311;
+  --orange: #ff5b14;
+  --orange-tint: #ffe2d3;
+  --rule: #b9b4aa;
+
+  --background: var(--concrete);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  --primary: var(--orange);
+  --primary-foreground: var(--ink);
+  --secondary: var(--paper);
+  --secondary-foreground: var(--ink);
+  --muted: #e7e3db;
+  --muted-foreground: #4a4640;
+  --accent: var(--orange-tint);
+  --accent-foreground: var(--ink);
+  --destructive: #c8102e;
+  --destructive-foreground: #ffffff;
   /* Allergy flags (CLAUDE.md §6): always red, never re-themed to brand colours. */
-  --allergy: oklch(0.505 0.213 27.518);
-  --allergy-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.02 80);
-  --input: oklch(0.88 0.02 80);
-  --ring: oklch(0.553 0.195 38.402);
-  --chart-1: oklch(0.553 0.195 38.402);
-  --chart-2: oklch(0.6 0.1 150);
-  --chart-3: oklch(0.75 0.15 80);
-  --chart-4: oklch(0.45 0.08 50);
-  --chart-5: oklch(0.65 0.12 20);
-  --sidebar: oklch(0.97 0.02 85);
-  --sidebar-foreground: oklch(0.26 0.03 50);
-  --sidebar-primary: oklch(0.553 0.195 38.402);
-  --sidebar-primary-foreground: oklch(0.99 0.005 85);
-  --sidebar-accent: oklch(0.93 0.045 145);
-  --sidebar-accent-foreground: oklch(0.3 0.06 150);
-  --sidebar-border: oklch(0.9 0.02 80);
-  --sidebar-ring: oklch(0.553 0.195 38.402);
+  --allergy: #c8102e;
+  --allergy-foreground: #ffffff;
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--ink);
+  --chart-1: var(--orange);
+  --chart-2: #2f6f4f;
+  --chart-3: #e0a100;
+  --chart-4: #4a4640;
+  --chart-5: #8c3b1a;
+  --sidebar: var(--paper);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--orange);
+  --sidebar-primary-foreground: var(--ink);
+  --sidebar-accent: var(--orange-tint);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--ink);
+  --sidebar-ring: var(--ink);
 }
 
 @theme inline {
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
+  --color-concrete: var(--concrete);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-orange: var(--orange);
+  --color-orange-tint: var(--orange-tint);
+  --color-rule: var(--rule);
+  /* Cartoon "printed" shadows: hard ink offsets, never soft blur. */
+  --shadow-ink-sm: 2px 2px 0 0 var(--ink);
+  --shadow-ink: 4px 4px 0 0 var(--ink);
+  --shadow-ink-lg: 8px 8px 0 0 var(--ink);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -112,10 +129,63 @@
   }
   body {
     @apply bg-background font-sans text-foreground antialiased;
+    font-size: 1.0625rem;
   }
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 3px;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --header-h: 4rem;
+  }
+}
+
+/* ── View transitions (React <ViewTransition>) ───────────────────────────── */
+::view-transition-group(.morph) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1); /* cartoon overshoot */
+}
+::view-transition-old(.page-out) {
+  animation: 180ms ease-in both page-out;
+}
+::view-transition-new(.page-in) {
+  animation: 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both page-in;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-0.4deg);
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(0.6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
