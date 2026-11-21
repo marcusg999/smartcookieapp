@@ -1,7 +1,8 @@
-import { CalendarDays, ClipboardList, Heart, ShoppingBasket, User } from "lucide-react";
+import { CalendarDays, ClipboardList, Heart, Smile, User } from "lucide-react";
 import { ViewTransition } from "react";
 
 import { HalftoneDefs } from "@/components/art/cartoons";
+import { Toaster } from "@/components/admin/toaster";
 import { Logo } from "@/components/layout/logo";
 import { NavLink } from "@/components/layout/nav-link";
 import { getContent } from "@/lib/content/content";
@@ -11,18 +12,19 @@ import { getContent } from "@/lib/content/content";
 export default async function FamilyLayout({ children }: LayoutProps<"/">) {
   const c = await getContent();
   const tabs = [
-    { href: "/menu", label: c.text("nav.tab_menu"), icon: CalendarDays },
+    { href: "/order", label: c.text("nav.tab_menu"), icon: CalendarDays },
     { href: "/orders", label: c.text("nav.tab_orders"), icon: ClipboardList },
-    { href: "/cart", label: c.text("nav.tab_cart"), icon: ShoppingBasket },
+    { href: "/children", label: c.text("nav.tab_kids"), icon: Smile },
     { href: "/favorites", label: c.text("nav.tab_favorites"), icon: Heart },
     { href: "/account", label: c.text("nav.tab_account"), icon: User },
   ];
   return (
     <div className="flex min-h-full flex-1 flex-col" data-shell="family">
       <HalftoneDefs />
+      <Toaster />
       <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
-          <Logo href="/menu" label="Family home" />
+          <Logo href="/account" label="Family home" />
           <nav aria-label="Family" className="hidden gap-1 md:flex">
             {tabs.map(({ href, label }) => (
               <NavLink

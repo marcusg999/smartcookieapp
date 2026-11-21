@@ -439,3 +439,38 @@ export async function getProfile(userId: string) {
   const { data } = await supabase.from("profiles").select("full_name, phone").eq("id", userId).maybeSingle();
   return data as { full_name: string | null; phone: string | null } | null;
 }
+
+/** Partner schools + classrooms a child can be linked to (names only). */
+export const getPartnerSchools = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("partner_schools");
+  return (data ?? []) as {
+    organization_id: string;
+    name: string;
+    classroom_id: string;
+    classroom_name: string;
+    grade: string | null;
+  }[];
+});
+
+/** Plan allowance already used this week by the household's other live orders. */
+export async function getUsedElsewhere(householdId: string, weekId: string, plan: PlanAllowance | null, excludeOrderId?: string | null) {
+  const used = { meals: {} as Record<string, number>, snacks: {} as Record<string, number> };
+  if (!plan) return used;
+  const supabase = await createClient();
+  let q = supabase
+    .from("order_items")
+    .select("child_id, quantity, menu_items ( is_snack ), orders!inner ( household_id, menu_week_id, status, id )")
+    .eq("covered_by_subscription", true)
+    .eq("orders.household_id", householdId)
+    .eq("orders.menu_week_id", weekId)
+    .in("orders.status", ["pending_payment", "paid", "invoiced", "fulfilled"]);
+  if (excludeOrderId) q = q.neq("orders.id", excludeOrderId);
+  const { data } = await q;
+  for (const row of (data ?? []) as unknown as { child_id: string | null; quantity: number; menu_items: { is_snack: boolean } | null }[]) {
+    const key = plan.unit === "per_child" ? (row.child_id ?? "household") : "household";
+    const bucket = row.menu_items?.is_snack ? used.snacks : used.meals;
+    bucket[key] = (bucket[key] ?? 0) + row.quantity;
+  }
+  return used;
+}

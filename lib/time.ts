@@ -88,3 +88,8 @@ export function addDays(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
+
+/** True if an ISO instant is in the past (server components: request time). */
+export function isPast(iso: string | null | undefined, now: Date = new Date()): boolean {
+  return Boolean(iso) && Date.parse(iso!) <= now.getTime();
+}
