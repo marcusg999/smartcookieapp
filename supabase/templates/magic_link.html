@@ -1,0 +1,5 @@
+<!-- Local-dev template. Production copy moves to the CMS / React Email later. -->
+<h2>Sign in to Smart Cookie</h2>
+<p>Use this link to sign in. It expires in 10 minutes and works once.</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink&next=/account">Sign in</a></p>
+<p>If you didn't request this, you can ignore this email.</p>
