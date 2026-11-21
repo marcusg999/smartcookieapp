@@ -1,4 +1,4 @@
-import { publicSchema, type PublicEnv } from "./env.schema";
+import { publicSchema, type PublicEnv } from "./env.public-schema";
 
 /**
  * Browser-safe environment. Next.js only inlines `NEXT_PUBLIC_*` variables

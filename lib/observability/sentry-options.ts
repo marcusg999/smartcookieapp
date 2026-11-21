@@ -14,7 +14,8 @@ export function sentryOptions(dsn: string | undefined, environment: string | und
   return {
     dsn,
     environment,
-    enabled: Boolean(dsn) && process.env.NODE_ENV !== "test",
+    // Off in tests and with the placeholder DSN from .env.example.
+    enabled: Boolean(dsn) && !dsn?.includes("examplePublicKey@") && process.env.NODE_ENV !== "test",
     tracesSampleRate: environment === "production" ? 0.1 : 1.0,
     dataCollection: {
       userInfo: false,

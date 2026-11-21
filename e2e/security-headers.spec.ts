@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
  * X-Content-Type-Options, Referrer-Policy, Permissions-Policy), plus the
  * stricter rules from CLAUDE.md §5.9. All present and strict = "A" grade.
  */
-const pages = ["/", "/account", "/school", "/admin", "/sign-in"];
+const pages = ["/", "/menu", "/sign-in", "/account", "/admin"];
 
 for (const path of pages) {
   test(`security headers on ${path}`, async ({ request }) => {

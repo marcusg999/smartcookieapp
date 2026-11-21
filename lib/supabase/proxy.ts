@@ -47,5 +47,13 @@ export async function updateSession(request: NextRequest, extraRequestHeaders: R
   // the token if needed and verifies the JWT signature.
   const { data } = await supabase.auth.getClaims();
 
-  return { response, claims: data?.claims ?? null };
+  return {
+    supabase,
+    claims: (data?.claims as Record<string, unknown> | undefined) ?? null,
+    // A getter: setAll may replace the response after this function returns
+    // (e.g. signOut() in the proxy), and callers must use the latest one.
+    get response() {
+      return response;
+    },
+  };
 }

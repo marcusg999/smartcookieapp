@@ -1,5 +1,9 @@
 <!-- Local-dev template. Production copy moves to the CMS / React Email later. -->
 <h2>Reset your password</h2>
 <p>Someone asked to reset your Smart Cookie password. If it wasn't you, ignore this email.</p>
-<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password">Choose a new password</a></p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password"
+    >Choose a new password</a
+  >
+</p>
 <p>If you didn't request this, you can ignore this email.</p>

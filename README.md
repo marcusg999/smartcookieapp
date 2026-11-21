@@ -20,7 +20,9 @@ pnpm supabase status            # copy API URL + publishable/secret keys into .e
 pnpm dev                        # http://localhost:3000
 ```
 
-Shells to check: `/` (marketing), `/account` (family), `/school` (school portal), `/admin` (admin).
+Emails (confirmations, magic links, invites) land in Mailpit at <http://127.0.0.1:54324>.
+
+**First owner:** sign up at `/sign-up`, confirm the email, then run `pnpm owner:bootstrap you@example.com` and visit `/admin`. You'll be asked to set up an authenticator app. Further staff are invited from `/admin/staff`.
 
 `pnpm dev` and `pnpm build` **refuse to start** if any required environment variable is missing or malformed. The error lists the variable names (never their values).
 
@@ -63,7 +65,7 @@ Server-only values are read through `lib/env.ts`, which imports `server-only`, s
 | `pnpm db:test`                           | Database (RLS) tests in `supabase/tests`.                                     |
 | `pnpm icons`                             | Re-render PWA icons from `app/icon.svg`.                                      |
 
-For Playwright locally you can reuse an installed Chromium: `PW_CHROMIUM_EXECUTABLE=/path/to/chrome pnpm test:e2e`. Otherwise run `pnpm exec playwright install chromium` once.
+Playwright needs the local Supabase stack running (`pnpm db:start`) with its keys in `.env.local`. For Playwright locally you can reuse an installed Chromium: `PW_CHROMIUM_EXECUTABLE=/path/to/chrome pnpm test:e2e`. Otherwise run `pnpm exec playwright install chromium` once.
 
 ## Environments and deployment
 
@@ -86,7 +88,7 @@ Rules:
 - Schema changes **only** via `supabase/migrations`. Never edit a hosted database by hand.
 - Nothing runs against production without the owner's explicit go-ahead (CLAUDE.md §8).
 - Each Vercel environment (Preview / Staging / Production) holds its own env vars; production alone gets live Stripe keys and `NEXT_PUBLIC_APP_ENV=production`, and the build refuses a mismatch.
-- OAuth redirect URLs are allow-listed per Supabase project (configured in Phase 2).
+- OAuth redirect URLs are allow-listed per Supabase project. See the provider checklist in [`docs/phase-2.md`](./docs/phase-2.md).
 
 ## Security baseline
 

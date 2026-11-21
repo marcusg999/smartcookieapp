@@ -1,5 +1,9 @@
 <!-- Local-dev template. Production copy moves to the CMS / React Email later. -->
 <h2>Confirm your new email</h2>
 <p>Confirm this address to finish changing your Smart Cookie email.</p>
-<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next=/account">Confirm new email</a></p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next=/account"
+    >Confirm new email</a
+  >
+</p>
 <p>If you didn't request this, you can ignore this email.</p>

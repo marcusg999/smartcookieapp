@@ -64,6 +64,12 @@ select pg_temp.make_user('55555555-5555-5555-5555-555555555555', 'sneaky@example
 select pg_temp.make_user('66666666-6666-6666-6666-666666666666', 'school@example.com',
   '{"account_type":"school","organization_name":"Maple Elementary"}');
 
+-- Start from a clean slate for owners (other test runs may have left some).
+-- Everything is rolled back at the end.
+alter table public.user_roles disable trigger user_roles_protect_last_owner;
+delete from public.user_roles where role = 'owner';
+alter table public.user_roles enable trigger user_roles_protect_last_owner;
+
 -- Staff roles are granted directly here (as postgres), like the bootstrap script does.
 insert into public.user_roles (user_id, role) values
   ('33333333-3333-3333-3333-333333333333', 'kitchen'),

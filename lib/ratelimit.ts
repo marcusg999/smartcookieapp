@@ -27,10 +27,57 @@ export const LIMITS = {
 
 export type LimiterName = keyof typeof LIMITS;
 
-let limiters: Record<LimiterName, Ratelimit> | null = null;
+type Limiter = { limit(key: string): Promise<{ success: boolean; limit: number; remaining: number; reset: number }> };
 
-function getLimiters(): Record<LimiterName, Ratelimit> {
+let limiters: Record<LimiterName, Limiter> | null = null;
+
+const WINDOW_MS: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000 };
+
+/**
+ * In-memory sliding-window limiter for local dev and CI only (single process,
+ * resets on restart). Used when Upstash still has the placeholder URL from
+ * .env.example; the env schema forbids that in production.
+ */
+function memoryLimiter(tokens: number, window: string): Limiter {
+  const [amount, unit] = window.split(" ") as [string, string];
+  const windowMs = Number(amount) * (WINDOW_MS[unit] ?? 60_000);
+  const hits = new Map<string, number[]>();
+  return {
+    async limit(key) {
+      const now = Date.now();
+      const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+      const success = recent.length < tokens;
+      if (success) recent.push(now);
+      hits.set(key, recent);
+      return {
+        success,
+        limit: tokens,
+        remaining: Math.max(0, tokens - recent.length),
+        reset: (recent[0] ?? now) + windowMs,
+      };
+    },
+  };
+}
+
+export function usesPlaceholderRedis(url: string): boolean {
+  try {
+    return new URL(url).hostname === "example.upstash.io";
+  } catch {
+    return false;
+  }
+}
+
+function getLimiters(): Record<LimiterName, Limiter> {
   if (limiters) return limiters;
+  if (usesPlaceholderRedis(env.UPSTASH_REDIS_REST_URL) && env.NEXT_PUBLIC_APP_ENV !== "production") {
+    limiters = {
+      auth: memoryLimiter(LIMITS.auth.tokens, LIMITS.auth.window),
+      magicLink: memoryLimiter(LIMITS.magicLink.tokens, LIMITS.magicLink.window),
+      checkout: memoryLimiter(LIMITS.checkout.tokens, LIMITS.checkout.window),
+      adminMutation: memoryLimiter(LIMITS.adminMutation.tokens, LIMITS.adminMutation.window),
+    };
+    return limiters;
+  }
   const redis = new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN });
   const make = (name: LimiterName) =>
     new Ratelimit({

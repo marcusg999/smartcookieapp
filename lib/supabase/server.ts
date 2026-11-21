@@ -17,6 +17,8 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(publicEnv.NEXT_PUBLIC_SUPABASE_URL, publicEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
+    // MFA recovery (backup) codes are an opt-in SDK feature.
+    auth: { experimental: { recoveryCodes: true } },
     cookies: {
       getAll() {
         return cookieStore.getAll();
