@@ -13,6 +13,8 @@ import { isPwnedPassword } from "@/lib/auth/pwned";
 import { safeNext } from "@/lib/auth/redirect";
 import { requestMeta } from "@/lib/auth/request-meta";
 import { verifyTurnstile } from "@/lib/auth/turnstile";
+import { getPublicSettings } from "@/lib/content/settings";
+import { createPublicClient } from "@/lib/supabase/public";
 import { env } from "@/lib/env";
 import { hashIdentifier, rateLimit } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
@@ -165,6 +167,12 @@ const signUpSchema = z
     fullName: z.string().trim().max(120).optional(),
     accountType: z.enum(["parent", "school"]),
     organizationName: z.string().trim().max(120).optional(),
+    pilotCode: z
+      .string()
+      .trim()
+      .max(40)
+      .regex(/^[A-Za-z0-9-]*$/, "Check your invite code.")
+      .optional(),
   })
   .refine((v) => v.accountType !== "school" || (v.organizationName?.length ?? 0) >= 2, {
     path: ["organizationName"],
@@ -181,8 +189,22 @@ export async function signUp(_prev: ActionResult | null, formData: FormData): Pr
     fullName: formData.get("fullName") || undefined,
     accountType: formData.get("accountType"),
     organizationName: formData.get("organizationName") || undefined,
+    pilotCode: formData.get("pilotCode") || undefined,
   });
   if (!parsed.success) return fail("validation", "Please fix the highlighted fields.", fieldErrors(parsed.error));
+
+  // Pilot mode (Phase 5 §7): an unused invite code is required. The
+  // handle_new_user trigger re-checks and redeems it; this is the friendly check.
+  const settings = await getPublicSettings().catch(() => null);
+  if (settings?.pilot_mode) {
+    const code = parsed.data.pilotCode ?? "";
+    const { data: valid } = code
+      ? await createPublicClient().rpc("pilot_code_is_valid", { p_code: code, p_email: parsed.data.email })
+      : { data: false };
+    if (!valid) {
+      return fail("validation", "That invite code isn't valid.", { pilotCode: "That invite code isn't valid or has been used." });
+    }
+  }
 
   if (await isPwnedPassword(parsed.data.password)) {
     return fail("validation", "That password appeared in a data breach. Please choose a different one.", {
@@ -202,6 +224,7 @@ export async function signUp(_prev: ActionResult | null, formData: FormData): Pr
         full_name: parsed.data.fullName,
         account_type: parsed.data.accountType,
         organization_name: parsed.data.accountType === "school" ? parsed.data.organizationName : undefined,
+        pilot_code: parsed.data.pilotCode ? parsed.data.pilotCode.toUpperCase() : undefined,
       },
     },
   });

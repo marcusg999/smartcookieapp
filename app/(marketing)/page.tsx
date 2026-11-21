@@ -1,4 +1,5 @@
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Quote, ShieldCheck, Sparkles } from "lucide-react";
+import { headers } from "next/headers";
 import Link from "next/link";
 
 import { Broccoli, CookieMascot, Wrap } from "@/components/art/cartoons";
@@ -6,7 +7,13 @@ import { ShaderField } from "@/components/art/shader-field";
 import { PackTheTrayHero } from "@/components/marketing/pack-the-tray-hero";
 import { MealImage } from "@/components/menu/meal-image";
 import { Button } from "@/components/ui/button";
+import { RichText } from "@/components/rich-text";
 import { getContent } from "@/lib/content/content";
+import { getPublicSettings } from "@/lib/content/settings";
+import { publicEnv } from "@/lib/env.public";
+import { createPublicClient } from "@/lib/supabase/public";
+import { getPublicPlans, getPublishedFaqs, getPublishedTestimonials } from "@/lib/content/public-data";
+import { describePlan } from "@/lib/family/plan-copy";
 import { stepsSchema } from "@/lib/content/schemas";
 import { getPublishedWeeks } from "@/lib/menu/queries";
 
@@ -21,7 +28,41 @@ const PANELS = [
 ];
 
 export default async function HomePage() {
-  const [c, weeks] = await Promise.all([getContent(), getPublishedWeeks().catch(() => [])]);
+  const [c, weeks, plans, faqs, testimonials, settings, nonce, zones] = await Promise.all([
+    getContent(),
+    getPublishedWeeks().catch(() => []),
+    getPublicPlans().catch(() => []),
+    getPublishedFaqs().catch(() => []),
+    getPublishedTestimonials().catch(() => []),
+    getPublicSettings().catch(() => null),
+    headers().then((h) => h.get("x-nonce") ?? undefined),
+    createPublicClient()
+      .from("delivery_zones")
+      .select("name")
+      .then((r) => (r.data ?? []).map((z) => z.name as string)),
+  ]);
+  // Structured data for search (LocalBusiness). "<" is escaped so the JSON
+  // can never close the script tag.
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: settings?.business_name ?? "Smart Cookie",
+    description: c.text("seo.site_description"),
+    url: publicEnv.NEXT_PUBLIC_SITE_URL,
+    ...(settings?.contact_email ? { email: settings.contact_email } : {}),
+    ...(settings?.contact_phone ? { telephone: settings.contact_phone } : {}),
+    ...(zones.length ? { areaServed: zones.map((name) => ({ "@type": "Place", name })) } : {}),
+    sameAs: Object.values(settings?.social_links ?? {}).filter((u) => typeof u === "string" && u.startsWith("https://")),
+  }).replace(/</g, "\\u003c");
+  const marquee = c
+    .text("home.marquee")
+    .split("·")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const planCards = plans.slice(0, 3).map((p) => describePlan(p, c));
+  const plansCta = c.cta("home.plans.cta");
+  const faqCta = c.cta("home.faq.cta");
+  const finalCta = c.cta("home.cta.button");
   const parsedSteps = stepsSchema.safeParse(c.json("how_it_works.steps", []));
   const steps = parsedSteps.success ? parsedSteps.data.slice(0, 3) : [];
   const meals = (weeks[0]?.meals ?? []).filter((m) => m.available_for !== "schools").slice(0, 5);
@@ -31,6 +72,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <PackTheTrayHero
         copy={{
           caption: c.text("home.hero.caption"),
@@ -69,6 +111,19 @@ export default async function HomePage() {
         </div>
       </PackTheTrayHero>
 
+      {marquee.length ? (
+        <div className="marquee relative -rotate-1 overflow-hidden border-y-2 border-ink bg-orange py-3 shadow-ink">
+          <p className="sr-only">{c.text("home.marquee")}</p>
+          <div className="marquee-track flex w-max gap-8 pr-8 text-lg font-black whitespace-nowrap uppercase" aria-hidden="true">
+            {[...marquee, ...marquee].map((item, i) => (
+              <span key={i} className="flex items-center gap-8">
+                {item} <Sparkles className="size-5" />
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {meals.length ? (
         <section aria-labelledby="week-heading" className="relative mx-auto w-full max-w-6xl px-4 py-20 md:py-28">
           <div className="grid grid-cols-12 items-end gap-4">
@@ -99,6 +154,13 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
+          <p className="mt-10 text-center">
+            <Button asChild variant="outline" size="lg">
+              <Link href="/menu">
+                {c.text("home.week.cta")} <ArrowRight aria-hidden="true" />
+              </Link>
+            </Button>
+          </p>
         </section>
       ) : null}
 
@@ -151,6 +213,71 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {planCards.length ? (
+        <section aria-labelledby="plans-heading" className="mx-auto w-full max-w-6xl px-4 py-20 md:py-28">
+          <div className="grid grid-cols-12 items-end gap-4">
+            <h2 id="plans-heading" className="col-span-12 text-5xl leading-none font-black md:col-span-7 md:text-7xl">
+              {c.text("home.plans.title")}
+            </h2>
+            <p className="col-span-12 text-lg md:col-span-4 md:col-start-9 md:pb-2">{c.text("home.plans.subtitle")}</p>
+          </div>
+          <ul className="mt-12 grid gap-6 md:grid-cols-4">
+            <li style={{ "--tilt": "-1.5deg" } as React.CSSProperties} className="reveal-up flex flex-col rounded-2xl border-2 border-dashed border-ink bg-paper p-6">
+              <h3 className="text-2xl font-black">{c.text("home.plans.a_la_carte_title")}</h3>
+              <p className="mt-3 flex-1 leading-relaxed">{c.text("home.plans.a_la_carte_body")}</p>
+            </li>
+            {planCards.map((p, i) => (
+              <li
+                key={p.id}
+                style={{ "--tilt": `${[1.2, -0.8, 1.6][i]}deg` } as React.CSSProperties}
+                className={`reveal-up flex flex-col rounded-2xl border-2 border-ink p-6 shadow-ink-lg ${i === 1 ? "bg-orange" : "bg-paper"}`}
+              >
+                <h3 className="text-xl leading-tight font-black">{p.name}</h3>
+                <p className="mt-3 font-display text-5xl font-black italic">{p.priceLabel}</p>
+                <p className="text-sm font-semibold">{p.intervalLabel}</p>
+                <ul className="mt-4 flex-1 space-y-1.5 text-sm">
+                  {p.points.slice(0, 3).map((pt) => (
+                    <li key={pt} className="flex gap-2">
+                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0" /> {pt}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          {plansCta.label ? (
+            <p className="mt-10 text-center">
+              <Button asChild size="lg">
+                <Link href={plansCta.href}>
+                  {plansCta.label} <ArrowRight aria-hidden="true" />
+                </Link>
+              </Button>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {testimonials.length ? (
+        <section aria-labelledby="love-heading" className="border-y-2 border-ink bg-orange-tint py-20 md:py-24">
+          <h2 id="love-heading" className="mx-auto max-w-6xl px-4 text-5xl leading-none font-black md:text-7xl">
+            {c.text("home.testimonials.title")}
+          </h2>
+          <ul className="mx-auto mt-10 flex max-w-6xl snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-6" tabIndex={0}>
+            {testimonials.map((t, i) => (
+              <li
+                key={t.id}
+                style={{ "--tilt": `${i % 2 ? 1.5 : -1.5}deg` } as React.CSSProperties}
+                className="reveal-up w-[85%] shrink-0 snap-center rounded-3xl border-2 border-ink bg-paper p-6 shadow-ink-lg sm:w-[26rem]"
+              >
+                <Quote aria-hidden="true" className="size-8 text-raspberry" />
+                <blockquote className="mt-3 font-display text-2xl leading-snug italic">{t.quote}</blockquote>
+                {t.attribution ? <p className="mt-4 font-bold">{t.attribution}</p> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section id="schools" aria-labelledby="schools-heading" className="relative overflow-hidden bg-ink text-paper">
         <ShaderField
           intensity={0.6}
@@ -172,6 +299,55 @@ export default async function HomePage() {
                 <Link href={schoolsCta.href}>{schoolsCta.label}</Link>
               </Button>
             ) : null}
+          </div>
+        </div>
+      </section>
+
+      {faqs.length ? (
+        <section aria-labelledby="faq-heading" className="mx-auto w-full max-w-4xl px-4 py-20 md:py-28">
+          <h2 id="faq-heading" className="text-5xl leading-none font-black md:text-7xl">
+            {c.text("home.faq.title")}
+          </h2>
+          <div className="mt-10 space-y-3">
+            {faqs.slice(0, 4).map((f) => (
+              <details key={f.id} className="group reveal-up rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink-sm open:shadow-ink">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-bold">
+                  {f.question}
+                  <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink bg-orange text-xl transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <RichText doc={f.answer_rich} className="mt-3 leading-relaxed" />
+              </details>
+            ))}
+          </div>
+          {faqCta.label ? (
+            <p className="mt-8">
+              <Button asChild variant="outline" size="lg">
+                <Link href={faqCta.href}>{faqCta.label}</Link>
+              </Button>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section aria-labelledby="cta-heading" className="relative overflow-hidden border-t-2 border-ink bg-orange">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 py-20 md:grid-cols-12 md:py-24">
+          <div className="md:col-span-8">
+            <h2 id="cta-heading" className="text-5xl leading-[0.95] font-black md:text-7xl">
+              {c.text("home.cta.title")}
+            </h2>
+            <p className="mt-4 max-w-xl text-lg">{c.text("home.cta.body")}</p>
+            {finalCta.label ? (
+              <Button asChild size="lg" variant="secondary" className="mt-6">
+                <Link href={finalCta.href}>
+                  {finalCta.label} <ArrowRight aria-hidden="true" />
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+          <div className="float-y hidden justify-center md:col-span-4 md:flex">
+            <CookieMascot className="h-48 w-auto -rotate-6" />
           </div>
         </div>
       </section>

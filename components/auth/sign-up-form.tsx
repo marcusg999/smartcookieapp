@@ -15,8 +15,8 @@ import { OAuthButtons } from "./oauth-buttons";
 import { PasswordStrengthMeter } from "./password-strength-meter";
 import { Turnstile } from "./turnstile";
 
-export function SignUpForm() {
-  const [accountType, setAccountType] = useState<"parent" | "school">("parent");
+export function SignUpForm({ pilotMode = false, initialType = "parent" }: { pilotMode?: boolean; initialType?: "parent" | "school" }) {
+  const [accountType, setAccountType] = useState<"parent" | "school">(initialType);
   const [organizationName, setOrganizationName] = useState("");
   const [password, setPassword] = useState("");
   const [state, action, pending] = useActionState(signUp, null);
@@ -91,6 +91,25 @@ export function SignUpForm() {
 
       <form id="signup-form" action={action} className="space-y-4" noValidate>
         <input type="hidden" name="accountType" value={accountType} />
+        {pilotMode ? (
+          <div className="space-y-2 rounded-xl border-2 border-ink bg-orange-tint p-3">
+            <Label htmlFor="pilotCode">Invite code</Label>
+            <Input
+              id="pilotCode"
+              name="pilotCode"
+              autoComplete="off"
+              autoCapitalize="characters"
+              maxLength={40}
+              required
+              aria-invalid={Boolean(errors?.pilotCode)}
+              aria-describedby="pilotCode-help pilotCode-error"
+            />
+            <p id="pilotCode-help" className="text-sm text-muted-foreground">
+              We&apos;re in a small pilot right now. Enter the code from your invitation.
+            </p>
+            <FieldError id="pilotCode-error" message={errors?.pilotCode} />
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="fullName">Your name</Label>
           <Input id="fullName" name="fullName" autoComplete="name" maxLength={120} />

@@ -8,7 +8,10 @@ import { getPublicSettings } from "@/lib/content/settings";
 import { getPublishedWeeks, getWeekForPreview, type PublicWeek } from "@/lib/menu/queries";
 import { formatDay, formatInZone } from "@/lib/time";
 
-export const metadata = { title: "Menu" };
+export async function generateMetadata() {
+  const c = await getContent();
+  return { title: c.text("menu.title"), description: c.text("seo.menu_description") };
+}
 
 const TILTS = [-1.2, 1.4, -0.8];
 const UUID = /^[0-9a-f-]{36}$/i;
