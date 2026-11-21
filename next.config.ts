@@ -10,6 +10,13 @@ validateEnv(process.env);
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    // Menu photos and media come only from this project's Supabase Storage.
+    remotePatterns: process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? [new URL(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/**`)]
+      : [],
+    dangerouslyAllowLocalIP: process.env.NEXT_PUBLIC_APP_ENV === "development",
+  },
   // Cache Components (and its Partial Prerendering) is deliberately OFF: a
   // nonce-based CSP needs every page rendered per request, and the Next.js
   // docs state PPR is incompatible with nonces. See docs/phase-1.md.

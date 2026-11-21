@@ -22,6 +22,8 @@ uniform float u_time;
 uniform float u_dpr;
 uniform float u_intensity;
 uniform float u_transparent;
+uniform vec3 u_bg;
+uniform vec3 u_dot;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -50,8 +52,8 @@ void main() {
   float radius = cell * 0.5 * smoothstep(0.35, 1.35, f);
   float dotMask = 1.0 - smoothstep(radius - 1.0, radius + 0.5, length(g));
 
-  vec3 concrete = vec3(0.851, 0.835, 0.804);
-  vec3 orange = vec3(1.0, 0.357, 0.078);
+  vec3 concrete = u_bg;
+  vec3 orange = u_dot;
   float grain = (hash(floor(frag / u_dpr) + floor(u_time * 6.0)) - 0.5) * 0.05;
   vec3 col = mix(concrete + grain, orange, dotMask);
   // Transparent mode: only the orange dots, for dark backgrounds.
@@ -104,6 +106,16 @@ export function ShaderField({
     const uDpr = gl.getUniformLocation(program, "u_dpr");
     const uIntensity = gl.getUniformLocation(program, "u_intensity");
     const uTransparent = gl.getUniformLocation(program, "u_transparent");
+    const uBg = gl.getUniformLocation(program, "u_bg");
+    const uDot = gl.getUniformLocation(program, "u_dot");
+    // Colours follow the brand CSS variables (editable in /admin/settings).
+    const rgb = (name: string, fallback: [number, number, number]): [number, number, number] => {
+      const hex = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+      return m ? [parseInt(m[1]!, 16) / 255, parseInt(m[2]!, 16) / 255, parseInt(m[3]!, 16) / 255] : fallback;
+    };
+    const bg = rgb("--concrete", [0.98, 0.93, 0.92]);
+    const dot = rgb("--orange", [0.96, 0.71, 0.71]);
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -124,6 +136,8 @@ export function ShaderField({
       gl.uniform1f(uDpr, dpr);
       gl.uniform1f(uIntensity, intensity);
       gl.uniform1f(uTransparent, transparent ? 1 : 0);
+      gl.uniform3f(uBg, bg[0], bg[1], bg[2]);
+      gl.uniform3f(uDot, dot[0], dot[1], dot[2]);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
 
