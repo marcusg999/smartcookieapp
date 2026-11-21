@@ -122,6 +122,7 @@ insert into seed_items values
   ('salmon-sweet-potato', 'Salmon bites & sweet potato', 'Oven-baked salmon bites with roasted sweet potato wedges.', 'mains', 1095, 795, false, 'carrots', '{fish}', '{}', '{gluten-free,dairy-free}'),
   ('turkey-meatballs-marinara', 'Turkey meatballs marinara', 'Tender turkey meatballs, slow tomato sauce, quinoa.', 'mains', 950, 690, false, 'pasta', '{eggs}', '{wheat}', '{gluten-free,dairy-free,kid-favorite}'),
   ('black-bean-quesadilla', 'Black bean quesadilla', 'Black beans, corn and mild cheese in a crisp tortilla.', 'mains', 850, 615, false, 'wrap', '{wheat,milk}', '{}', '{vegetarian,kid-favorite}'),
+  ('peanut-noodle-bowl', 'Peanut noodle bowl', 'Wheat noodles, crunchy veg and a mild peanut sauce.', 'mains', 925, 675, false, 'pasta', '{peanuts,wheat,soy}', '{}', '{vegetarian}'),
   ('chickpea-curry-rice', 'Mild chickpea curry & rice', 'Coconut chickpea curry with basmati rice. Gently spiced.', 'mains', 875, 625, false, 'broccoli', '{}', '{tree-nuts}', '{vegan,gluten-free,dairy-free}'),
   ('garden-broccoli-bites', 'Garden broccoli bites', 'Roasted florets with lemon and olive oil.', 'sides', 395, 275, false, 'broccoli', '{}', '{}', '{vegan,gluten-free,dairy-free,nut-free}'),
   ('carrot-sticks-hummus', 'Carrot sticks & hummus', 'Sweet carrots with house-made hummus.', 'sides', 425, 300, false, 'carrots', '{sesame}', '{}', '{vegan,gluten-free,dairy-free}'),
@@ -165,13 +166,13 @@ insert into public.menu_templates (id, name, description, rotation_position) val
 insert into public.menu_template_items (menu_template_id, menu_item_id, sort_order, capacity)
 select 'e1000000-0000-4000-8000-000000000001', m.id, x.ord, case when m.slug = 'baked-mac-and-cheese' then 120 end
 from unnest(array['baked-mac-and-cheese', 'turkey-avocado-wrap', 'broccoli-cheddar-bake', 'veggie-pasta-salad',
-  'turkey-meatballs-marinara', 'garden-broccoli-bites', 'rainbow-carrot-slaw', 'apple-slices-sunbutter', 'oat-apple-cookie',
+  'turkey-meatballs-marinara', 'peanut-noodle-bowl', 'garden-broccoli-bites', 'rainbow-carrot-slaw', 'apple-slices-sunbutter', 'oat-apple-cookie',
   'strawberry-banana-smoothie']) with ordinality as x(slug, ord)
 join public.menu_items m on m.slug = x.slug;
 
 insert into public.menu_template_items (menu_template_id, menu_item_id, sort_order)
 select 'e1000000-0000-4000-8000-000000000002', m.id, x.ord
-from unnest(array['teriyaki-chicken-rice', 'chickpea-curry-rice', 'black-bean-quesadilla', 'salmon-sweet-potato',
+from unnest(array['teriyaki-chicken-rice', 'peanut-noodle-bowl', 'chickpea-curry-rice', 'black-bean-quesadilla', 'salmon-sweet-potato',
   'chicken-veggie-wrap', 'carrot-sticks-hummus', 'cucumber-edamame-salad', 'yogurt-berry-parfait', 'veggie-mini-muffins',
   'vanilla-oat-milk']) with ordinality as x(slug, ord)
 join public.menu_items m on m.slug = x.slug;

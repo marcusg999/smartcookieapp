@@ -3,16 +3,12 @@
 import { ShieldAlert } from "lucide-react";
 import { useSyncExternalStore, type ReactNode } from "react";
 
+import { fmt, type Copy } from "@/lib/content/fmt";
 import { timeLeft } from "@/lib/ordering/logic";
 import { cn } from "@/lib/utils";
 
-/** CMS copy for client components: `copy` comes from Content.group(prefix). */
-export type Copy = Record<string, string>;
+export { fmt, type Copy };
 
-/** Fill {placeholders} in a CMS string. */
-export function fmt(template: string | undefined, vars: Record<string, string | number> = {}): string {
-  return (template ?? "").replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ""));
-}
 
 /** A child's allergies, always in allergy red (CLAUDE.md §6). */
 export function AllergyChips({

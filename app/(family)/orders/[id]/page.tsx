@@ -2,7 +2,8 @@ import { ArrowLeft, MapPin, School, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AllergyChips, fmt, PageTitle } from "@/components/family/kit";
+import { AllergyChips, PageTitle } from "@/components/family/kit";
+import { fmt } from "@/lib/content/fmt";
 import { OrderActions } from "@/components/family/order-actions";
 import { RichText } from "@/components/rich-text";
 import { requireUser } from "@/lib/auth/guards";

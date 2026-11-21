@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { signOut } from "@/app/(auth)/actions";
-import { Countdown, fmt } from "@/components/family/kit";
+import { Countdown } from "@/components/family/kit";
+import { fmt } from "@/lib/content/fmt";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/guards";
 import { getContent } from "@/lib/content/content";

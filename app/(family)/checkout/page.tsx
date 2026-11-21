@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CheckoutFlow } from "@/components/family/checkout-flow";
+import { CheckoutFlow, PaymentPanel } from "@/components/family/checkout-flow";
 import { PageTitle } from "@/components/family/kit";
 import { RichText } from "@/components/rich-text";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,14 @@ import {
   getCart,
   getChildren,
   getHousehold,
+  getOrder,
   getOrderableWeeks,
   getSubscription,
   getUsedElsewhere,
   getZoneForZip,
   toPlanAllowance,
 } from "@/lib/family/queries";
+import { normalizeLines } from "@/lib/ordering/logic";
 import { stripeMockMode } from "@/lib/stripe/server";
 import { formatDay } from "@/lib/time";
 
@@ -31,6 +33,28 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const [c, household, weeks] = await Promise.all([getContent(), getHousehold(), getOrderableWeeks()]);
   const copy = c.group("checkout.");
   if (!household) return null;
+
+  // Step 4 (payment) renders from the placed order, so a refresh never loses it. RLS: own orders only.
+  if (typeof sp.order === "string" && UUID.test(sp.order)) {
+    const order = await getOrder(sp.order);
+    if (order) {
+      const lines = order.items
+        .filter((i) => i.child_id && i.menu_item_id && i.delivery_date)
+        .map((i) => ({ childId: i.child_id!, menuItemId: i.menu_item_id!, deliveryDate: i.delivery_date!, quantity: i.quantity }));
+      return (
+        <div className="mx-auto w-full max-w-2xl">
+          <PageTitle>{copy.title}</PageTitle>
+          <PaymentPanel
+            copy={copy}
+            placed={{ orderId: order.id, orderNumber: order.order_number, totalCents: order.total_cents, status: order.status }}
+            lines={normalizeLines(lines)}
+            replacing={false}
+            testMode={stripeMockMode()}
+          />
+        </div>
+      );
+    }
+  }
 
   // The requested week, else the first open week that has a cart.
   let week = weeks.find((w) => typeof sp.week === "string" && UUID.test(sp.week) && w.id === sp.week);
@@ -82,8 +106,6 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
         plan={plan}
         usedElsewhere={usedElsewhere}
         disclaimer={<RichText doc={c.rich("checkout.allergy_disclaimer")} />}
-        replacing={Boolean(cart.replacesOrderId)}
-        testMode={stripeMockMode()}
       />
     </div>
   );

@@ -1,7 +1,8 @@
 import { CalendarClock, Truck } from "lucide-react";
 import Link from "next/link";
 
-import { Countdown, fmt } from "@/components/family/kit";
+import { Countdown } from "@/components/family/kit";
+import { fmt } from "@/lib/content/fmt";
 import { OrderScreen } from "@/components/family/order-screen";
 import { RichText } from "@/components/rich-text";
 import { Button } from "@/components/ui/button";

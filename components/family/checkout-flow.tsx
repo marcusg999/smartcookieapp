@@ -33,8 +33,6 @@ export function CheckoutFlow({
   plan,
   usedElsewhere,
   disclaimer,
-  replacing,
-  testMode,
 }: {
   copy: Copy;
   week: { id: string; label: string };
@@ -45,8 +43,6 @@ export function CheckoutFlow({
   plan: PlanAllowance | null;
   usedElsewhere: { meals: Record<string, number>; snacks: Record<string, number> };
   disclaimer: ReactNode;
-  replacing: boolean;
-  testMode: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("review");
@@ -60,9 +56,6 @@ export function CheckoutFlow({
   const [addressId, setAddressId] = useState(addresses.find((a) => a.is_default)?.id ?? addresses[0]?.id ?? "");
   const [notes, setNotes] = useState("");
   const [confirmed, setConfirmed] = useState<string[]>([]);
-  const [placed, setPlaced] = useState<{ orderId: string; orderNumber: string; totalCents: number; status: string } | null>(null);
-  const [paid, setPaid] = useState(false);
-  const [saveName, setSaveName] = useState("");
   const [pending, start] = useTransition();
 
   const mealMap = useMemo(() => new Map(meals.map((m) => [m.id, m])), [meals]);
@@ -76,7 +69,7 @@ export function CheckoutFlow({
   });
   const discountCents = discount ? Math.min(discount.cents, totals.subtotalCents) : 0;
   const estimate = totals.subtotalCents + totals.deliveryFeeCents - discountCents;
-  const deliveryReady = fulfillment === "school_dropoff" ? canSchool : Boolean(addressId && zone);
+  const deliveryReady = fulfillment === "school_dropoff" ? canSchool : Boolean(addressId && zone) && !totals.belowMinimum;
 
   const place = (confirmIds: string[]) =>
     start(async () => {
@@ -90,10 +83,9 @@ export function CheckoutFlow({
         notes: notes || null,
       });
       if (!res.ok) return void toast.error(res.message);
-      setPlaced(res.data!);
-      setPaid(res.data!.status === "paid");
       setStep("payment");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Payment renders from the saved order, so a refresh never loses it.
+      router.replace(`/checkout?order=${res.data!.orderId}`);
     });
 
   const stepIndex = STEPS.indexOf(step);
@@ -276,13 +268,13 @@ export function CheckoutFlow({
               {copy.back}
             </Button>
             {confirmed.length === kidsInCart.length ? (
-              <Button size="lg" disabled={pending} onClick={() => place(confirmed)}>
+              <Button size="lg" disabled={pending || !deliveryReady} onClick={() => place(confirmed)}>
                 {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
                 {pending ? copy.placing : copy.place}
               </Button>
             ) : (
               // Returning families: one tap confirms every child and places the order.
-              <Button size="lg" disabled={pending} onClick={() => place(kidsInCart.map((k) => k.id))}>
+              <Button size="lg" disabled={pending || !deliveryReady} onClick={() => place(kidsInCart.map((k) => k.id))}>
                 {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <ShieldCheck aria-hidden="true" />}
                 {copy.allergy_all}
               </Button>
@@ -291,7 +283,89 @@ export function CheckoutFlow({
         </section>
       ) : null}
 
-      {step === "payment" && placed ? (
+      {step === "payment" ? <p className="text-center font-semibold">{copy.placing}</p> : null}
+    </div>
+  );
+}
+
+function Totals({
+  copy,
+  totals,
+  discountCents,
+  estimate,
+  zone,
+}: {
+  copy: Copy;
+  totals: ReturnType<typeof priceCart>;
+  discountCents: number;
+  estimate: number;
+  zone: (ZoneFees & { name: string }) | null;
+}) {
+  const included = totals.lines.reduce((n, l) => n + l.coveredQty, 0);
+  return (
+    <dl className="space-y-1 rounded-2xl border-2 border-ink bg-paper p-4 text-sm">
+      <div className="flex justify-between">
+        <dt>{copy.subtotal}</dt>
+        <dd className="font-semibold">{formatCents(totals.subtotalCents)}</dd>
+      </div>
+      {included ? (
+        <div className="flex justify-between">
+          <dt>{copy.included}</dt>
+          <dd className="font-semibold">× {included}</dd>
+        </div>
+      ) : null}
+      {zone ? (
+        <div className="flex justify-between">
+          <dt>
+            {copy.delivery_fee}
+            {zone.freeOverCents !== null && totals.deliveryFeeCents > 0 ? (
+              <span className="ml-1 text-xs text-muted-foreground">({fmt(copy.free_over, { amount: formatCents(zone.freeOverCents) })})</span>
+            ) : null}
+          </dt>
+          <dd className="font-semibold">{totals.deliveryFeeCents ? formatCents(totals.deliveryFeeCents) : copy.free}</dd>
+        </div>
+      ) : null}
+      {discountCents ? (
+        <div className="flex justify-between">
+          <dt>{copy.discount}</dt>
+          <dd className="font-semibold">−{formatCents(discountCents)}</dd>
+        </div>
+      ) : null}
+      <div className="flex justify-between border-t-2 border-ink pt-2 text-lg font-black">
+        <dt>{copy.total}</dt>
+        <dd>{formatCents(estimate)}</dd>
+      </div>
+      {totals.belowMinimum && zone ? (
+        <p role="alert" className="font-semibold text-destructive">
+          {fmt(copy.minimum, { amount: formatCents(zone.minOrderCents) })}
+        </p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">{copy.estimate_note}</p>
+    </dl>
+  );
+}
+
+/** Step 4: pay for a placed order (or celebrate a fully included one). */
+export function PaymentPanel({
+  copy,
+  placed,
+  lines,
+  replacing,
+  testMode,
+}: {
+  copy: Copy;
+  placed: { orderId: string; orderNumber: string; totalCents: number; status: string };
+  lines: CartLine[];
+  replacing: boolean;
+  testMode: boolean;
+}) {
+  const router = useRouter();
+  const [paid, setPaid] = useState(placed.status !== "pending_payment");
+  const [saveName, setSaveName] = useState("");
+  const [pending, start] = useTransition();
+  return (
+    <div className="mx-auto w-full max-w-2xl">
+      {(
         <section className="space-y-5">
           {paid ? (
             <div className="rounded-3xl border-2 border-ink bg-orange p-6 text-center shadow-ink-lg">
@@ -352,64 +426,7 @@ export function CheckoutFlow({
             </Button>
           </div>
         </section>
-      ) : null}
+      )}
     </div>
-  );
-}
-
-function Totals({
-  copy,
-  totals,
-  discountCents,
-  estimate,
-  zone,
-}: {
-  copy: Copy;
-  totals: ReturnType<typeof priceCart>;
-  discountCents: number;
-  estimate: number;
-  zone: (ZoneFees & { name: string }) | null;
-}) {
-  const included = totals.lines.reduce((n, l) => n + l.coveredQty, 0);
-  return (
-    <dl className="space-y-1 rounded-2xl border-2 border-ink bg-paper p-4 text-sm">
-      <div className="flex justify-between">
-        <dt>{copy.subtotal}</dt>
-        <dd className="font-semibold">{formatCents(totals.subtotalCents)}</dd>
-      </div>
-      {included ? (
-        <div className="flex justify-between">
-          <dt>{copy.included}</dt>
-          <dd className="font-semibold">× {included}</dd>
-        </div>
-      ) : null}
-      {zone ? (
-        <div className="flex justify-between">
-          <dt>
-            {copy.delivery_fee}
-            {zone.freeOverCents !== null && totals.deliveryFeeCents > 0 ? (
-              <span className="ml-1 text-xs text-muted-foreground">({fmt(copy.free_over, { amount: formatCents(zone.freeOverCents) })})</span>
-            ) : null}
-          </dt>
-          <dd className="font-semibold">{totals.deliveryFeeCents ? formatCents(totals.deliveryFeeCents) : copy.free}</dd>
-        </div>
-      ) : null}
-      {discountCents ? (
-        <div className="flex justify-between">
-          <dt>{copy.discount}</dt>
-          <dd className="font-semibold">−{formatCents(discountCents)}</dd>
-        </div>
-      ) : null}
-      <div className="flex justify-between border-t-2 border-ink pt-2 text-lg font-black">
-        <dt>{copy.total}</dt>
-        <dd>{formatCents(estimate)}</dd>
-      </div>
-      {totals.belowMinimum && zone ? (
-        <p role="alert" className="font-semibold text-destructive">
-          {fmt(copy.minimum, { amount: formatCents(zone.minOrderCents) })}
-        </p>
-      ) : null}
-      <p className="text-xs text-muted-foreground">{copy.estimate_note}</p>
-    </dl>
   );
 }

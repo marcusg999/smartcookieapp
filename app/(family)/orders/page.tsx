@@ -1,7 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-import { fmt, PageTitle } from "@/components/family/kit";
+import { PageTitle } from "@/components/family/kit";
+import { fmt } from "@/lib/content/fmt";
 import { requireUser } from "@/lib/auth/guards";
 import { getContent } from "@/lib/content/content";
 import { getHousehold, getOrders, type OrderSummary } from "@/lib/family/queries";

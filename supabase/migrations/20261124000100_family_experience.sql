@@ -59,6 +59,12 @@ create trigger carts_touch before update on public.carts for each row execute fu
 -- Saved orders get a check on shape (name + array) already; favourites a lookup index.
 create index favorites_household_idx on public.favorites (household_id, child_id);
 
+-- Parents read their own children directly by household. (can_view_child()
+-- looks the child up in the table, so it can't see a row inserted in the same
+-- statement, which broke INSERT … RETURNING for a new child.)
+create policy "Members read their children" on public.children
+  for select to authenticated using (public.is_household_member(household_id));
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Subscriptions: a plan change waits for the next period (Phase 6 prorates).
 -- ─────────────────────────────────────────────────────────────────────────────

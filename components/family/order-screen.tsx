@@ -121,6 +121,7 @@ export function OrderScreen(props: Props) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaving(true);
     saveTimer.current = setTimeout(async () => {
+      saveTimer.current = null;
       const res = await saveCart({ weekId: week.id, lines: latest.current });
       setSaving(false);
       if (!res.ok) {
@@ -136,6 +137,17 @@ export function OrderScreen(props: Props) {
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
+
+  /** Save any pending edit now (before leaving for checkout). */
+  const flush = async () => {
+    if (!saveTimer.current) return true;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    const res = await saveCart({ weekId: week.id, lines: latest.current });
+    setSaving(false);
+    if (!res.ok) toast.error(res.message);
+    return res.ok;
+  };
 
   const update = (next: CartLine[]) => {
     setLines(next);
@@ -526,7 +538,16 @@ export function OrderScreen(props: Props) {
               </span>
             </button>
             <Button asChild size="lg" className={cn(!lines.length && "pointer-events-none opacity-50")}>
-              <Link href={`/checkout?week=${week.id}`} aria-disabled={!lines.length} tabIndex={lines.length ? 0 : -1}>
+              <Link
+                href={`/checkout?week=${week.id}`}
+                aria-disabled={!lines.length}
+                tabIndex={lines.length ? 0 : -1}
+                onClick={async (e) => {
+                  if (!saveTimer.current) return;
+                  e.preventDefault();
+                  if (await flush()) router.push(`/checkout?week=${week.id}`);
+                }}
+              >
                 {copy.checkout}
               </Link>
             </Button>
