@@ -59,7 +59,15 @@ test("owner edits the hero, previews the draft, publishes, and the public page s
     await visitor.reload();
     await expect(visitor.getByText(text)).toBeVisible();
     await visitor.close();
+
+    // Put the launch copy back through the UI, so the publish also expires the cache.
+    const restore = page.getByRole("region", { name: "Small label above the headline" });
+    await restore.getByRole("textbox").fill(String(original!.published_value));
+    await restore.getByRole("button", { name: "Save draft" }).click();
+    await restore.getByRole("button", { name: "Publish", exact: true }).click();
+    await expect(restore.getByText("Live", { exact: true })).toBeVisible();
   } finally {
+    // Fallback if the test failed midway (the cache then expires within the hour).
     // Restore the seeded copy; the next publish revalidates the cache anyway.
     await admin
       .from("content_blocks")

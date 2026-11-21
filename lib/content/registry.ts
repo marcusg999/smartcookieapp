@@ -222,6 +222,54 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     ],
   },
   {
+    id: "family_pages",
+    label: "Family pages (coming soon)",
+    items: [
+      { key: "family.cart.title", label: "Cart page heading", type: "text", default: "Cart" },
+      {
+        key: "family.cart.body",
+        label: "Cart page text",
+        type: "text",
+        default: "Review meals for each child before checkout.",
+      },
+      { key: "family.checkout.title", label: "Checkout page heading", type: "text", default: "Checkout" },
+      {
+        key: "family.checkout.body",
+        label: "Checkout page text",
+        type: "text",
+        default: "Confirm allergies for each child, then pay securely.",
+      },
+      { key: "family.children.title", label: "Children page heading", type: "text", default: "Children" },
+      {
+        key: "family.children.body",
+        label: "Children page text",
+        type: "text",
+        default: "Each child's first name, classroom, allergies and dietary needs.",
+      },
+      { key: "family.favorites.title", label: "Favorites page heading", type: "text", default: "Favorites" },
+      {
+        key: "family.favorites.body",
+        label: "Favorites page text",
+        type: "text",
+        default: "Meals you've saved for quick ordering.",
+      },
+      { key: "family.orders.title", label: "Orders page heading", type: "text", default: "Orders" },
+      {
+        key: "family.orders.body",
+        label: "Orders page text",
+        type: "text",
+        default: "Upcoming and past orders, with one-tap reorder.",
+      },
+      { key: "family.subscription.title", label: "Subscription page heading", type: "text", default: "Subscription" },
+      {
+        key: "family.subscription.body",
+        label: "Subscription page text",
+        type: "text",
+        default: "Your meal plan, billing and pause/skip options.",
+      },
+    ],
+  },
+  {
     id: "school",
     label: "School landing",
     items: [

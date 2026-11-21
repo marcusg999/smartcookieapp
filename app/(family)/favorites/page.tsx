@@ -1,7 +1,9 @@
 import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { getContent } from "@/lib/content/content";
 
 export const metadata = { title: "Favorites" };
 
-export default function FavoritesPage() {
-  return <PlaceholderPage title="Favorites" description="Meals you've saved for quick ordering." />;
+export default async function FavoritesPage() {
+  const c = await getContent();
+  return <PlaceholderPage title={c.text("family.favorites.title")} description={c.text("family.favorites.body")} />;
 }

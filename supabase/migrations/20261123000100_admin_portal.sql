@@ -162,3 +162,112 @@ alter table public.site_settings
   alter column brand_colors set default '{"primary":"#f4b4b6","background":"#fbeeea","surface":"#fff9f5","ink":"#1f3b2d","accent":"#b3344b"}';
 update public.site_settings
   set brand_colors = '{"primary":"#f4b4b6","background":"#fbeeea","surface":"#fff9f5","ink":"#1f3b2d","accent":"#b3344b"}';
+
+-- ── Price guard: an INSERT only counts as a price change when it sets one ───
+-- (adding a meal with no override to a week must not need a fresh MFA).
+create or replace function public.guard_price_columns()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  col text;
+begin
+  if public.is_trusted_writer() then
+    return new;
+  end if;
+  foreach col in array tg_argv loop
+    if (tg_op = 'INSERT' and jsonb_typeof(to_jsonb(new) -> col) is distinct from 'null')
+       or (tg_op = 'UPDATE' and (to_jsonb(new) -> col) is distinct from (to_jsonb(old) -> col)) then
+      if not (public.is_owner_aal2() and public.has_recent_mfa(300)) then
+        raise exception 'Only the owner, with a fresh MFA check, can change prices (%)', col
+          using errcode = 'insufficient_privilege';
+      end if;
+      return new;
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+revoke execute on function public.guard_price_columns() from public, anon, authenticated;
+
+-- ── Atomic list replacement (one transaction; RLS and the price guard apply) ─
+-- Rows: [{menu_item_id, price_override_cents, capacity, available_for}], in order.
+-- Existing rows are UPDATED (so an unchanged override never trips the guard),
+-- new rows inserted, missing rows deleted.
+create function public.set_menu_week_items(p_week uuid, p_rows jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  create temp table _rows on commit drop as
+    select (r ->> 'menu_item_id')::uuid as menu_item_id,
+           (r ->> 'price_override_cents')::integer as price_override_cents,
+           (r ->> 'capacity')::integer as capacity,
+           coalesce(r ->> 'available_for', 'both')::public.menu_audience as available_for,
+           (ord - 1)::integer as sort_order
+    from jsonb_array_elements(p_rows) with ordinality as t(r, ord);
+  delete from public.menu_week_items w
+    where w.menu_week_id = p_week and not exists (select 1 from _rows r where r.menu_item_id = w.menu_item_id);
+  update public.menu_week_items w
+    set price_override_cents = r.price_override_cents, capacity = r.capacity, available_for = r.available_for,
+        sort_order = r.sort_order
+    from _rows r where w.menu_week_id = p_week and w.menu_item_id = r.menu_item_id;
+  insert into public.menu_week_items (menu_week_id, menu_item_id, price_override_cents, capacity, available_for, sort_order)
+    select p_week, r.menu_item_id, r.price_override_cents, r.capacity, r.available_for, r.sort_order from _rows r
+    where not exists (select 1 from public.menu_week_items w where w.menu_week_id = p_week and w.menu_item_id = r.menu_item_id);
+  drop table _rows;
+end;
+$$;
+
+create function public.set_menu_template_items(p_template uuid, p_rows jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  create temp table _rows on commit drop as
+    select (r ->> 'menu_item_id')::uuid as menu_item_id,
+           (r ->> 'price_override_cents')::integer as price_override_cents,
+           (r ->> 'capacity')::integer as capacity,
+           coalesce(r ->> 'available_for', 'both')::public.menu_audience as available_for,
+           (ord - 1)::integer as sort_order
+    from jsonb_array_elements(p_rows) with ordinality as t(r, ord);
+  delete from public.menu_template_items w
+    where w.menu_template_id = p_template and not exists (select 1 from _rows r where r.menu_item_id = w.menu_item_id);
+  update public.menu_template_items w
+    set price_override_cents = r.price_override_cents, capacity = r.capacity, available_for = r.available_for,
+        sort_order = r.sort_order
+    from _rows r where w.menu_template_id = p_template and w.menu_item_id = r.menu_item_id;
+  insert into public.menu_template_items (menu_template_id, menu_item_id, price_override_cents, capacity, available_for, sort_order)
+    select p_template, r.menu_item_id, r.price_override_cents, r.capacity, r.available_for, r.sort_order from _rows r
+    where not exists (select 1 from public.menu_template_items w where w.menu_template_id = p_template and w.menu_item_id = r.menu_item_id);
+  drop table _rows;
+end;
+$$;
+
+-- A meal's badges and allergens are replaced together or not at all, so a
+-- failed save can never leave a meal with no allergens (CLAUDE.md §6).
+create function public.set_menu_item_tags(p_item uuid, p_badges uuid[], p_allergens jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  delete from public.menu_item_badges where menu_item_id = p_item;
+  insert into public.menu_item_badges (menu_item_id, badge_id) select p_item, unnest(p_badges);
+  delete from public.menu_item_allergens where menu_item_id = p_item;
+  insert into public.menu_item_allergens (menu_item_id, allergen_id, presence)
+    select p_item, (a ->> 'allergen_id')::uuid, (a ->> 'presence')::public.allergen_presence
+    from jsonb_array_elements(p_allergens) a;
+end;
+$$;
+
+revoke execute on function public.set_menu_week_items(uuid, jsonb), public.set_menu_template_items(uuid, jsonb),
+  public.set_menu_item_tags(uuid, uuid[], jsonb) from public, anon;
+grant execute on function public.set_menu_week_items(uuid, jsonb), public.set_menu_template_items(uuid, jsonb),
+  public.set_menu_item_tags(uuid, uuid[], jsonb) to authenticated;

@@ -64,9 +64,8 @@ export async function saveWeek(input: z.input<typeof saveSchema>) {
         await supabase.from("menu_week_items").select("menu_item_id, price_override_cents").eq("menu_week_id", data.id),
       );
       const before = new Map(existing.map((e) => [e.menu_item_id, e.price_override_cents]));
-      const priceChanged = data.items.some(
-        (i) => (before.get(i.menu_item_id) ?? null) !== i.price_override_cents && i.price_override_cents !== null,
-      );
+      // Setting, changing or clearing an override is a price change (step-up).
+      const priceChanged = data.items.some((i) => (before.get(i.menu_item_id) ?? null) !== i.price_override_cents);
       if (priceChanged) {
         const stepUp = requireRecentReauth(user);
         if (stepUp) return stepUp;
@@ -83,19 +82,8 @@ export async function saveWeek(input: z.input<typeof saveSchema>) {
           })
           .eq("id", data.id),
       );
-      // Replace the item list (order = array order).
-      const keep = new Set(ids);
-      const removed = existing.filter((e) => !keep.has(e.menu_item_id)).map((e) => e.menu_item_id);
-      if (removed.length)
-        check(await supabase.from("menu_week_items").delete().eq("menu_week_id", data.id).in("menu_item_id", removed));
-      if (data.items.length) {
-        check(
-          await supabase.from("menu_week_items").upsert(
-            data.items.map((i, sort_order) => ({ ...i, sort_order, menu_week_id: data.id })),
-            { onConflict: "menu_week_id,menu_item_id" },
-          ),
-        );
-      }
+      // One transaction: update kept rows, insert new ones, delete removed ones.
+      check(await supabase.rpc("set_menu_week_items", { p_week: data.id, p_rows: data.items }));
       revalidatePath(`/admin/menu/weeks/${data.id}`);
       return { auditEntity: { type: "menu_week", id: data.id }, result: { ok: true, message: "Week saved." } };
     },
@@ -144,6 +132,12 @@ export async function setWeekStatus(input: z.input<typeof statusSchema>) {
         if (!cutoff || !deliveryStarts || new Date(cutoff as string) >= new Date(deliveryStarts)) {
           return fail("validation", "The ordering cutoff must be before the first delivery day.");
         }
+        if (new Date(cutoff as string) <= new Date()) {
+          return fail(
+            "validation",
+            "The ordering cutoff for this week has already passed. Set a later cutoff before publishing.",
+          );
+        }
         const inactive = items
           .filter((i) => !i.menu_items?.is_active || i.menu_items.archived_at)
           .map((i) => i.menu_items?.name);
@@ -177,6 +171,7 @@ export async function setWeekStatus(input: z.input<typeof statusSchema>) {
   );
 }
 
+/** Replace a week's meals atomically (a refused step-up leaves the week untouched). */
 async function replaceItems(
   supabase: Parameters<Parameters<typeof adminAction>[1]>[1]["supabase"],
   weekId: string,
@@ -188,9 +183,8 @@ async function replaceItems(
     sort_order: number;
   }[],
 ) {
-  check(await supabase.from("menu_week_items").delete().eq("menu_week_id", weekId));
-  if (rows.length)
-    check(await supabase.from("menu_week_items").insert(rows.map((r) => ({ ...r, menu_week_id: weekId }))));
+  const ordered = [...rows].sort((a, b) => a.sort_order - b.sort_order).map(({ sort_order: _s, ...r }) => r);
+  check(await supabase.rpc("set_menu_week_items", { p_week: weekId, p_rows: ordered }));
 }
 
 export async function applyTemplate(input: { week_id: string; template_id: string }) {
@@ -357,11 +351,7 @@ export async function saveTemplate(input: z.input<typeof templateSchema>) {
           .eq("menu_template_id", data.id),
       );
       const before = new Map(existing.map((e) => [e.menu_item_id, e.price_override_cents]));
-      if (
-        data.items.some(
-          (i) => i.price_override_cents !== null && (before.get(i.menu_item_id) ?? null) !== i.price_override_cents,
-        )
-      ) {
+      if (data.items.some((i) => (before.get(i.menu_item_id) ?? null) !== i.price_override_cents)) {
         const stepUp = requireRecentReauth(user);
         if (stepUp) return stepUp;
       }
@@ -371,14 +361,7 @@ export async function saveTemplate(input: z.input<typeof templateSchema>) {
           .update({ name: data.name, description: data.description || null })
           .eq("id", data.id),
       );
-      check(await supabase.from("menu_template_items").delete().eq("menu_template_id", data.id));
-      if (data.items.length) {
-        check(
-          await supabase
-            .from("menu_template_items")
-            .insert(data.items.map((i, sort_order) => ({ ...i, sort_order, menu_template_id: data.id }))),
-        );
-      }
+      check(await supabase.rpc("set_menu_template_items", { p_template: data.id, p_rows: data.items }));
       revalidatePath("/admin/menu/templates");
       return { auditEntity: { type: "menu_template", id: data.id }, result: { ok: true, message: "Template saved." } };
     },

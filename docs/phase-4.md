@@ -121,12 +121,12 @@ Non-staff get a **404** for anything under `/admin`, so the area doesn't reveal 
 
 ### Public site now reads from the CMS
 
-- **Home page, nav, footer, menu page, family tab bar and account page:** every word comes from `content_blocks`. The registry holds 54 keys, all seeded.
+- **Home page, nav, footer, menu page, family tab bar and account page:** every word comes from `content_blocks`. The registry holds 66 keys, all seeded.
 - **`/menu`:** the real published weeks from the database. Meal cards show photos, price, badges and allergens (red) with CMS labels, the cutoff in the business timezone, and the paused-ordering message.
 - **Caching:** content, settings, menu and pages are cached with tags (`unstable_cache`) and expired by `updateTag` from admin actions.
 - **Owner preview:** draft mode (`/api/preview`) shows draft copy to an owner at AAL2 only. It never reads or writes the shared cache.
 - **Brand assets:** brand colours, logo and announcement come from `site_settings`. The PWA icons and manifest are recoloured to the logo palette.
-- **No-hard-coded-copy check:** `lib/content/no-hardcoded-copy.test.ts` parses every `.tsx` file under `app/(marketing)` and `app/(family)` with the TypeScript compiler and fails on any literal sentence in JSX.
+- **No-hard-coded-copy check:** `lib/content/no-hardcoded-copy.test.ts` parses every `.tsx` file under `app/(marketing)` and `app/(family)` with the TypeScript compiler and fails on any literal sentence in JSX text or in copy props (`title`, `description`, `placeholder`, `alt`…).
 
 ### Database (`supabase/migrations/20261123000100_admin_portal.sql`)
 
@@ -137,6 +137,9 @@ Non-staff get a **404** for anything under `/admin`, so the area doesn't reveal 
 - **New tables:**
   - `customer_notes` and `account_credits`, append-only, for ops and owner at AAL2.
   - Credits can be read by the household they belong to, and every credit is audited.
+- **Atomic saves:**
+  - `set_menu_item_tags`, `set_menu_week_items`, `set_menu_template_items`: replace a meal's allergens and badges, or a week's or template's meals, in one transaction, so a failed save never leaves a meal without allergens or a week half-emptied.
+  - `guard_price_columns` now treats an INSERT as a price change only when it actually sets a price.
 - **Media:**
   - `media_usage_count(path)` for safe deletes. Staff only; anon can't execute it.
   - The `media` storage bucket accepts writes from the owner only.
@@ -161,7 +164,7 @@ pnpm build && pnpm exec playwright test --trace off
 ```
 
 - **Unit tests (Vitest):** 67 tests. These include the registry (unique keys, valid defaults, every key seeded) and the no-hard-coded-copy scan.
-- **RLS tests (pgTAP):** 126 tests, 38 of them new in `supabase/tests/phase4.test.sql`. For each new table, the right role can, other roles can't, and anon can't.
+- **RLS tests (pgTAP):** 134 tests, 46 of them new in `supabase/tests/phase4.test.sql`. For each new table, the right role can, other roles can't, and anon can't.
 - **E2E tests (Playwright):** `e2e/admin.spec.ts` covers:
   - The owner edits the hero, previews the draft, publishes, and a visitor sees it.
   - A price change prompts step-up and stores a new (mocked) Stripe price id and a history row.
@@ -175,7 +178,7 @@ After adding a key to `lib/content/registry.ts`, run `pnpm content:seed` to rege
 
 - **Account screens:** the security and privacy pages (`app/(family)/account/security`, `account/privacy`) still have system copy in code and are allow-listed in the copy test. They will be rebuilt with the family experience in Phase 5. The email footer line is also in code.
 - **Orders:** the Orders screen is a list with week and status filters. Refunds, order edits and the kitchen views (cook list, labels, packing) come with checkout and fulfilment.
-- **Stripe:** runs in mock mode locally (`sk_test_dummy`). If Stripe fails after the database price is saved, the item keeps its old Stripe Price until the next save. The admin is told the save failed.
+- **Stripe:** runs in mock mode locally (`sk_test_dummy`). Price saves create the new Stripe Price first, write the amount and price id in one update, then archive the old Price. If Stripe fails, nothing is saved, or a new item is saved without a price id and syncs on its next save.
 - **Logo:** the logo was shared in chat but not as a file. Upload it in **Settings → Logo & colours** to replace the mascot, or attach the file so it can ship as the default.
 - **Next.js:** `forbidden()` relies on Next's experimental `authInterrupts` flag.
 - **Content keys:** the content type `image` is supported by the editor, but no registry key uses it yet.

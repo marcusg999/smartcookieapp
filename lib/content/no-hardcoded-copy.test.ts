@@ -22,6 +22,9 @@ function walk(dir: string): string[] {
   });
 }
 
+// Landmark names (aria-label on nav etc.) are structural, not copy.
+const COPY_PROPS = new Set(["title", "description", "placeholder", "alt", "body", "heading"]);
+
 const isSentence = (text: string) => /[A-Za-z]{2,}[^A-Za-z]+[A-Za-z]{2,}/.test(text.replace(/\s+/g, " ").trim());
 
 export function findLiteralCopy(file: string, source: string): string[] {
@@ -39,6 +42,16 @@ export function findLiteralCopy(file: string, source: string): string[] {
     ) {
       hits.push(node.expression.text);
     }
+    // title="…", description="…", aria-label="…" and similar props carry copy too.
+    if (
+      ts.isJsxAttribute(node) &&
+      COPY_PROPS.has(node.name.getText()) &&
+      node.initializer &&
+      ts.isStringLiteral(node.initializer) &&
+      isSentence(node.initializer.text)
+    ) {
+      hits.push(`${node.name.getText()}="${node.initializer.text}"`);
+    }
     ts.forEachChild(node, visit);
   };
   visit(sf);
@@ -49,6 +62,8 @@ describe("no hard-coded customer copy", () => {
   it("flags literal sentences", () => {
     expect(findLiteralCopy("x.tsx", "const A = () => <p>Hello there friend</p>;")).toEqual(["Hello there friend"]);
     expect(findLiteralCopy("x.tsx", "const A = () => <p>{c.text('k')} · 3</p>;")).toEqual([]);
+    expect(findLiteralCopy("x.tsx", 'const A = () => <Page title="Your orders" />;')).toEqual(['title="Your orders"']);
+    expect(findLiteralCopy("x.tsx", 'const A = () => <div className="flex gap-2" />;')).toEqual([]);
   });
 
   for (const file of ROOTS.flatMap(walk).filter((f) => !ALLOW_FILES.has(f))) {

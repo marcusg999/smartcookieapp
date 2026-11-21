@@ -1,7 +1,7 @@
 -- Phase 4 RLS tests (pgTAP): customer notes, credits, price history, top-9 lock, media usage.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(46);
 
 -- ── Helpers ─────────────────────────────────────────────────────────────────
 create function pg_temp.mk_user(p_id uuid, p_email text, p_meta jsonb default '{}') returns void language sql as $$
@@ -137,6 +137,41 @@ select pg_temp.act_as('40000000-0000-4000-8000-000000000001', 'aal1');
 select is(public.media_usage_count('x'), null, 'non-staff get no media usage answer');
 select pg_temp.act_as('40000000-0000-4000-8000-000000000007', 'aal2');
 select is(public.media_usage_count('nothing/uses-this.webp'), 0, 'owner gets a usage count');
+
+
+-- ── Atomic list replacement + price guard on INSERT ────────────────────────
+select pg_temp.reset_role();
+insert into public.menu_weeks (week_start, status) values ('2031-03-03', 'draft');
+insert into fx select 'week', id from public.menu_weeks where week_start = '2031-03-03';
+insert into public.menu_week_items (menu_week_id, menu_item_id, price_override_cents)
+  values ((select id from fx where k = 'week'), (select id from fx where k = 'item'), 700);
+insert into public.menu_items (name, slug, base_price_cents) values ('P4 Second Meal', 'p4-second-meal', 500);
+insert into fx select 'item2', id from public.menu_items where slug = 'p4-second-meal';
+select pg_temp.act_as('40000000-0000-4000-8000-000000000007', 'aal2');  -- owner, MFA not fresh
+select lives_ok(format($$ select public.set_menu_week_items(%L, %L::jsonb) $$, (select id from fx where k = 'week'),
+  jsonb_build_array(jsonb_build_object('menu_item_id', (select id from fx where k = 'item'), 'price_override_cents', 700),
+                    jsonb_build_object('menu_item_id', (select id from fx where k = 'item2'), 'price_override_cents', null))),
+  'adding a meal without an override (and keeping an unchanged override) needs no fresh MFA');
+select is((select count(*)::int from public.menu_week_items where menu_week_id = (select id from fx where k = 'week')), 2, 'both meals are on the week');
+select throws_ok(format($$ select public.set_menu_week_items(%L, %L::jsonb) $$, (select id from fx where k = 'week'),
+  jsonb_build_array(jsonb_build_object('menu_item_id', (select id from fx where k = 'item2'), 'price_override_cents', 1))),
+  '42501', null, 'a new override without a fresh MFA is refused');
+select is((select count(*)::int from public.menu_week_items where menu_week_id = (select id from fx where k = 'week')), 2,
+  'a refused replacement changes nothing (no half-emptied week)');
+select pg_temp.act_as('40000000-0000-4000-8000-000000000006', 'aal2', 60);
+select pg_temp.rows_affected(format($$ select public.set_menu_week_items(%L, '[]'::jsonb) $$, (select id from fx where k = 'week')));
+select pg_temp.reset_role();
+select is((select count(*)::int from public.menu_week_items where menu_week_id = (select id from fx where k = 'week')), 2,
+  'ops cannot remove a week''s meals (RLS)');
+select pg_temp.act_as('40000000-0000-4000-8000-000000000007', 'aal2');
+select lives_ok(format($$ select public.set_menu_item_tags(%L, '{}', %L::jsonb) $$, (select id from fx where k = 'item2'),
+  jsonb_build_array(jsonb_build_object('allergen_id', (select id from fx where k = 'top9'), 'presence', 'contains'))),
+  'owner sets a meal''s allergens');
+select throws_ok(format($$ select public.set_menu_item_tags(%L, '{}', %L::jsonb) $$, (select id from fx where k = 'item2'),
+  jsonb_build_array(jsonb_build_object('allergen_id', gen_random_uuid(), 'presence', 'contains'))),
+  '23503', null, 'an invalid allergen fails the whole save');
+select is((select count(*)::int from public.menu_item_allergens where menu_item_id = (select id from fx where k = 'item2')), 1,
+  'a failed save keeps the meal''s existing allergens');
 
 select * from finish();
 rollback;

@@ -6,7 +6,13 @@ import { z } from "zod";
 import { adminAction, check, OWNER } from "@/lib/admin/action";
 import { slugify } from "@/lib/admin/slug";
 import { TAGS } from "@/lib/content/content";
-import { ensureProduct, moveSubscriptionsToPrice, planRecurring, replacePrice } from "@/lib/stripe/server";
+import {
+  archivePrices,
+  createPrice,
+  ensureProduct,
+  moveSubscriptionsToPrice,
+  planRecurring,
+} from "@/lib/stripe/server";
 import { richTextSchema } from "@/lib/validation/rich-text";
 
 const planSchema = z.object({
@@ -53,17 +59,49 @@ export async function savePlan(input: PlanInput) {
         : null;
       const row = { ...fields, description_rich: fields.description_rich ?? null };
 
+      const priceChanged =
+        !existing ||
+        existing.price_cents !== data.price_cents ||
+        existing.billing_interval !== data.billing_interval ||
+        !existing.stripe_price_id;
+      const newPrice = async (planIdForMeta: string, productId?: string | null) => {
+        const product = await ensureProduct({ productId, name: data.name, metadata: { plan_id: planIdForMeta } });
+        const price = await createPrice({
+          productId: product,
+          unitAmount: data.price_cents,
+          currency: existing?.currency ?? "usd",
+          recurring: planRecurring(data.billing_interval),
+          metadata: { plan_id: planIdForMeta },
+        });
+        return { stripe_product_id: product, stripe_price_id: price };
+      };
+
       let id: string;
+      let priceId: string | null = null;
+      let stripeWarning = false;
       if (existing) {
         id = existing.id;
-        check(await supabase.from("plans").update(row).eq("id", id));
+        // Stripe first, then one update with the amount and the matching price id.
+        const stripeIds = priceChanged ? await newPrice(id, existing.stripe_product_id) : {};
+        check(
+          await supabase
+            .from("plans")
+            .update({ ...row, ...stripeIds })
+            .eq("id", id),
+        );
+        if (priceChanged) {
+          priceId = (stripeIds as { stripe_price_id: string }).stripe_price_id;
+          await archivePrices([existing.stripe_price_id]);
+        }
       } else {
         let slug = slugify(data.name).slice(0, 80);
-        const { count } = await supabase
-          .from("plans")
-          .select("id", { count: "exact", head: true })
-          .like("slug", `${slug}%`);
-        if (count) slug = `${slug}-${count + 1}`;
+        const { data: taken } = await supabase.from("plans").select("slug").like("slug", `${slug}%`);
+        const used = new Set((taken ?? []).map((t) => t.slug));
+        if (used.has(slug)) {
+          let n = 2;
+          while (used.has(`${slug}-${n}`)) n++;
+          slug = `${slug}-${n}`;
+        }
         id = (
           check(
             await supabase
@@ -73,51 +111,39 @@ export async function savePlan(input: PlanInput) {
               .single(),
           ) as { id: string }
         ).id;
-      }
-
-      const priceChanged =
-        !existing || existing.price_cents !== data.price_cents || existing.billing_interval !== data.billing_interval;
-      let moved = 0;
-      if (priceChanged) {
-        const productId = await ensureProduct({
-          productId: existing?.stripe_product_id,
-          name: data.name,
-          metadata: { plan_id: id },
-        });
-        const priceId = await replacePrice({
-          productId,
-          unitAmount: data.price_cents,
-          currency: existing?.currency ?? "usd",
-          previousPriceId: existing?.stripe_price_id,
-          recurring: planRecurring(data.billing_interval),
-          metadata: { plan_id: id },
-        });
-        check(
-          await supabase.from("plans").update({ stripe_product_id: productId, stripe_price_id: priceId }).eq("id", id),
-        );
-
-        if (existing && existing_subscribers === "move_at_renewal") {
-          const subs = check(
-            await supabase
-              .from("subscriptions")
-              .select("stripe_subscription_id")
-              .eq("plan_id", id)
-              .in("status", ["active", "trialing", "past_due"]),
-          );
-          moved = await moveSubscriptionsToPrice(
-            subs.map((s) => s.stripe_subscription_id).filter((s): s is string => !!s),
-            priceId,
-          );
+        try {
+          const stripeIds = await newPrice(id);
+          check(await supabase.from("plans").update(stripeIds).eq("id", id));
+        } catch (error) {
+          console.error("stripe sync failed for new plan", { id, error: (error as Error).message });
+          stripeWarning = true;
         }
       }
+
+      let moved = 0;
+      if (existing && priceId && existing_subscribers === "move_at_renewal") {
+        const subs = check(
+          await supabase
+            .from("subscriptions")
+            .select("stripe_subscription_id")
+            .eq("plan_id", id)
+            .in("status", ["active", "trialing", "past_due"]),
+        );
+        moved = await moveSubscriptionsToPrice(
+          subs.map((s) => s.stripe_subscription_id).filter((s): s is string => !!s),
+          priceId,
+        );
+      }
       revalidatePath("/admin/plans");
-      const message = !priceChanged
-        ? "Plan saved."
-        : existing
-          ? existing_subscribers === "move_at_renewal"
-            ? `Saved. ${moved} subscriber(s) will move to the new price at their next renewal (no mid-period charges).`
-            : "Saved. New sign-ups get the new price; existing subscribers keep their old price."
-          : "Plan created.";
+      const message = stripeWarning
+        ? "Plan created, but the payment system didn't update. Save again to retry."
+        : !priceChanged
+          ? "Plan saved."
+          : existing
+            ? existing_subscribers === "move_at_renewal"
+              ? `Saved. ${moved} subscriber(s) will move to the new price at their next renewal (no mid-period charges).`
+              : "Saved. New sign-ups get the new price; existing subscribers keep their old price."
+            : "Plan created.";
       return { auditEntity: { type: "plan", id }, result: { ok: true, data: { id }, message } };
     },
   );

@@ -37,14 +37,14 @@ export async function ensureProduct(opts: {
 }
 
 /**
- * Create a new Price (Prices are immutable) and archive the previous one.
- * Existing orders/subscriptions keep the old price; new checkouts use the new one.
+ * Create a new Price (Prices are immutable). Call archivePrice on the old one
+ * only AFTER the database points at the new id, so a failed save never leaves
+ * the catalog pointing at an archived price.
  */
-export async function replacePrice(opts: {
+export async function createPrice(opts: {
   productId: string;
   unitAmount: number;
   currency: string;
-  previousPriceId?: string | null;
   recurring?: { interval: "week" | "month"; interval_count: number } | null;
   metadata?: Record<string, string>;
 }): Promise<string> {
@@ -56,8 +56,24 @@ export async function replacePrice(opts: {
     recurring: opts.recurring ?? undefined,
     metadata: opts.metadata,
   });
-  if (opts.previousPriceId) await stripe().prices.update(opts.previousPriceId, { active: false });
   return price.id;
+}
+
+/**
+ * Archive superseded prices (existing orders/subscriptions keep them; new
+ * checkouts can't use them). Best effort: a failure is logged, not thrown,
+ * because the new price is already live.
+ */
+export async function archivePrices(ids: (string | null | undefined)[]): Promise<void> {
+  if (stripeMockMode()) return;
+  for (const id of ids) {
+    if (!id) continue;
+    try {
+      await stripe().prices.update(id, { active: false });
+    } catch (error) {
+      console.error("stripe: archiving a superseded price failed", { id, error: (error as Error).message });
+    }
+  }
 }
 
 /**

@@ -21,7 +21,7 @@ const PANELS = [
 ];
 
 export default async function HomePage() {
-  const [c, weeks] = await Promise.all([getContent(), getPublishedWeeks()]);
+  const [c, weeks] = await Promise.all([getContent(), getPublishedWeeks().catch(() => [])]);
   const parsedSteps = stepsSchema.safeParse(c.json("how_it_works.steps", []));
   const steps = parsedSteps.success ? parsedSteps.data.slice(0, 3) : [];
   const meals = (weeks[0]?.meals ?? []).filter((m) => m.available_for !== "schools").slice(0, 5);

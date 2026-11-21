@@ -33,13 +33,19 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
     .eq("id", id)
     .maybeSingle();
   if (!h) notFound();
-  const [{ data: orders }, { data: subs }, { data: notes }, { data: credits }] = await Promise.all([
+  const [{ data: orders }, { data: paid }, { data: subs }, { data: notes }, { data: credits }] = await Promise.all([
     supabase
       .from("orders")
       .select("id, order_number, status, total_cents, placed_at, created_at")
       .eq("household_id", id)
       .order("created_at", { ascending: false })
       .limit(50),
+    // Lifetime value counts every paid order, not just the 50 shown below.
+    supabase
+      .from("orders")
+      .select("total_cents")
+      .eq("household_id", id)
+      .in("status", ["paid", "fulfilled", "invoiced", "partially_refunded"]),
     supabase
       .from("subscriptions")
       .select("id, status, quantity, current_period_end, plans(name)")
@@ -66,9 +72,7 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
         )
     : { data: [] };
   const people = members.map((m) => ({ role: m.role, ...(profiles ?? []).find((p) => p.id === m.user_id) }));
-  const ltv = (orders ?? [])
-    .filter((o) => ["paid", "fulfilled", "invoiced", "partially_refunded"].includes(o.status))
-    .reduce((s, o) => s + o.total_cents, 0);
+  const ltv = (paid ?? []).reduce((sum, o) => sum + o.total_cents, 0);
   const balance = (credits ?? []).reduce((s, c) => s + c.amount_cents, 0);
   const children = ((h.children ?? []) as unknown as Child[]).filter((c) => !c.archived_at);
   const card = "rounded-2xl border-2 border-ink bg-paper p-5";

@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 
 import { TAGS } from "@/lib/content/content";
 import { createPublicClient } from "@/lib/supabase/public";
+import { addDays, todayInZone } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
 import type { RichNode } from "@/lib/validation/rich-text";
@@ -118,23 +119,29 @@ function shape(row: Row, cutoff: string | null): PublicWeek {
   };
 }
 
-/** Published weeks from this week on (cached; revalidated when the menu changes). */
+/**
+ * Published weeks that aren't over yet (last delivery day today or later, in
+ * the business timezone), soonest first. Cached; revalidated when the menu changes.
+ */
 export const getPublishedWeeks = unstable_cache(
   async (): Promise<PublicWeek[]> => {
     const supabase = createPublicClient();
-    const monday = new Date();
-    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7) - 7);
+    const { data: settings } = await supabase.from("site_settings_public").select("timezone").single();
+    const today = todayInZone(settings?.timezone ?? "America/Los_Angeles");
     const { data, error } = await supabase
       .from("menu_weeks")
       .select(WEEK_SELECT)
       .eq("status", "published")
-      .gte("week_start", monday.toISOString().slice(0, 10))
+      .gte("week_start", addDays(today, -6))
       .order("week_start")
-      .limit(6);
+      .limit(8);
     if (error) throw new Error(`menu fetch failed: ${error.code}`);
-    const rows = (data ?? []) as unknown as Row[];
+    const rows = ((data ?? []) as unknown as Row[]).filter((row) => {
+      const last = [...row.delivery_dates].sort().at(-1) ?? addDays(row.week_start, 6);
+      return last >= today;
+    });
     return Promise.all(
-      rows.map(async (row) => {
+      rows.slice(0, 6).map(async (row) => {
         const { data: cutoff } = await supabase.rpc("menu_week_cutoff", { p_week: row.id });
         return shape(row, (cutoff as string | null) ?? null);
       }),

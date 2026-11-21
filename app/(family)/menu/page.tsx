@@ -15,7 +15,11 @@ const UUID = /^[0-9a-f-]{36}$/i;
 
 export default async function MenuPage({ searchParams }: PageProps<"/menu">) {
   const sp = await searchParams;
-  const [c, settings, published] = await Promise.all([getContent(), getPublicSettings(), getPublishedWeeks()]);
+  const [c, settings, published] = await Promise.all([
+    getContent(),
+    getPublicSettings().catch(() => null),
+    getPublishedWeeks().catch(() => []),
+  ]);
 
   // Owner preview of an unpublished week (/menu?preview=<id>), read with the
   // owner's own session so RLS decides; everyone else sees published weeks.
@@ -47,7 +51,7 @@ export default async function MenuPage({ searchParams }: PageProps<"/menu">) {
         <p className="col-span-12 text-muted-foreground md:col-span-4 md:pb-2">{c.text("menu.subtitle")}</p>
       </div>
 
-      {!settings.ordering_enabled ? (
+      {settings && !settings.ordering_enabled ? (
         <p
           role="status"
           className="mt-6 rounded-xl border-2 border-ink bg-orange px-4 py-3 font-semibold shadow-ink-sm"
@@ -88,7 +92,7 @@ export default async function MenuPage({ searchParams }: PageProps<"/menu">) {
             {week.cutoff ? (
               <p className="rounded-full border-2 border-ink bg-paper px-3 py-1 text-sm font-bold">
                 {c.text("menu.cutoff_label", {
-                  date: formatInZone(week.cutoff, settings.timezone, {
+                  date: formatInZone(week.cutoff, settings?.timezone ?? "America/Los_Angeles", {
                     weekday: "long",
                     month: "short",
                     day: "numeric",

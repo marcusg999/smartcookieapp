@@ -9,7 +9,7 @@ import { fail, type ActionResult } from "@/lib/auth/action-result";
 import { requireRecentReauth } from "@/lib/auth/guards";
 import { TAGS } from "@/lib/content/content";
 import { ImageRejected, processUpload } from "@/lib/images/process";
-import { ensureProduct, replacePrice } from "@/lib/stripe/server";
+import { archivePrices, createPrice, ensureProduct } from "@/lib/stripe/server";
 import { richTextSchema } from "@/lib/validation/rich-text";
 
 const uuid = z.uuid();
@@ -66,10 +66,15 @@ export async function saveMenuItem(input: z.input<typeof itemSchema>): Promise<S
               .single(),
           )
         : null;
-      const priceChanged =
+      const amountChanged =
         !existing ||
         existing.base_price_cents !== data.base_price_cents ||
         existing.school_price_cents !== data.school_price_cents;
+      // Also resync when an earlier Stripe call failed and left the ids missing.
+      const stripeMissing =
+        !!existing &&
+        (!existing.stripe_price_id || (data.school_price_cents !== null && !existing.stripe_school_price_id));
+      const priceChanged = amountChanged || stripeMissing;
 
       // Price changes need a fresh MFA step-up (CLAUDE.md §5.5); the database enforces it too.
       if (priceChanged) {
@@ -91,14 +96,41 @@ export async function saveMenuItem(input: z.input<typeof itemSchema>): Promise<S
         school_price_cents: data.school_price_cents,
       };
 
+      // Stripe first (Prices are immutable): create the new Price(s), then write
+      // the amount and the matching ids in ONE update, then archive the old
+      // ones. A Stripe failure leaves the database unchanged.
+      const syncStripe = async (itemId: string, productId?: string | null) => {
+        const product = await ensureProduct({ productId, name: data.name, metadata: { menu_item_id: itemId } });
+        const currency = existing?.currency ?? "usd";
+        const priceId = await createPrice({
+          productId: product,
+          unitAmount: data.base_price_cents,
+          currency,
+          metadata: { menu_item_id: itemId, audience: "families" },
+        });
+        const schoolPriceId =
+          data.school_price_cents === null
+            ? null
+            : await createPrice({
+                productId: product,
+                unitAmount: data.school_price_cents,
+                currency,
+                metadata: { menu_item_id: itemId, audience: "schools" },
+              });
+        return { stripe_product_id: product, stripe_price_id: priceId, stripe_school_price_id: schoolPriceId };
+      };
+
       let id: string;
+      let stripeWarning = false;
       if (!data.id) {
         let slug = slugify(data.name);
-        const { count } = await supabase
-          .from("menu_items")
-          .select("id", { count: "exact", head: true })
-          .like("slug", `${slug}%`);
-        if (count) slug = `${slug}-${count + 1}`;
+        const { data: taken } = await supabase.from("menu_items").select("slug").like("slug", `${slug}%`);
+        const used = new Set((taken ?? []).map((t) => t.slug));
+        if (used.has(slug)) {
+          let n = 2;
+          while (used.has(`${slug}-${n}`)) n++;
+          slug = `${slug}-${n}`;
+        }
         const inserted = check(
           await supabase
             .from("menu_items")
@@ -107,57 +139,38 @@ export async function saveMenuItem(input: z.input<typeof itemSchema>): Promise<S
             .single(),
         ) as { id: string };
         id = inserted.id;
+        // The item exists now; if Stripe fails it's retried on the next save.
+        try {
+          check(
+            await supabase
+              .from("menu_items")
+              .update(await syncStripe(id))
+              .eq("id", id),
+          );
+        } catch (error) {
+          console.error("stripe sync failed for new menu item", { id, error: (error as Error).message });
+          stripeWarning = true;
+        }
       } else {
         id = data.id;
-        check(await supabase.from("menu_items").update(row).eq("id", id));
-      }
-
-      // New Stripe Price on every price change; the old one is archived.
-      if (priceChanged) {
-        const productId = await ensureProduct({
-          productId: existing?.stripe_product_id,
-          name: data.name,
-          metadata: { menu_item_id: id },
-        });
-        const priceId = await replacePrice({
-          productId,
-          unitAmount: data.base_price_cents,
-          currency: existing?.currency ?? "usd",
-          previousPriceId: existing?.stripe_price_id,
-          metadata: { menu_item_id: id, audience: "families" },
-        });
-        const schoolPriceId =
-          data.school_price_cents === null
-            ? null
-            : await replacePrice({
-                productId,
-                unitAmount: data.school_price_cents,
-                currency: existing?.currency ?? "usd",
-                previousPriceId: existing?.stripe_school_price_id,
-                metadata: { menu_item_id: id, audience: "schools" },
-              });
+        const stripeIds = priceChanged ? await syncStripe(id, existing?.stripe_product_id) : {};
         check(
           await supabase
             .from("menu_items")
-            .update({ stripe_product_id: productId, stripe_price_id: priceId, stripe_school_price_id: schoolPriceId })
+            .update({ ...row, ...stripeIds })
             .eq("id", id),
         );
+        if (priceChanged) await archivePrices([existing?.stripe_price_id, existing?.stripe_school_price_id]);
       }
 
-      check(await supabase.from("menu_item_badges").delete().eq("menu_item_id", id));
-      if (data.badge_ids.length) {
-        check(
-          await supabase
-            .from("menu_item_badges")
-            .insert(data.badge_ids.map((badge_id) => ({ menu_item_id: id, badge_id }))),
-        );
-      }
-      check(await supabase.from("menu_item_allergens").delete().eq("menu_item_id", id));
-      if (data.allergens.length) {
-        check(
-          await supabase.from("menu_item_allergens").insert(data.allergens.map((a) => ({ menu_item_id: id, ...a }))),
-        );
-      }
+      // Badges + allergens replaced in one transaction (never left empty by a failed save).
+      check(
+        await supabase.rpc("set_menu_item_tags", {
+          p_item: id,
+          p_badges: data.badge_ids,
+          p_allergens: data.allergens,
+        }),
+      );
 
       revalidatePath("/admin/menu");
       return {
@@ -165,8 +178,9 @@ export async function saveMenuItem(input: z.input<typeof itemSchema>): Promise<S
         result: {
           ok: true,
           data: { id, priceChanged },
-          message:
-            priceChanged && existing
+          message: stripeWarning
+            ? "Saved, but the payment system didn't update. Save again to retry."
+            : amountChanged && existing
               ? "Saved. The new price applies to new orders; existing orders keep their price."
               : "Saved.",
         },

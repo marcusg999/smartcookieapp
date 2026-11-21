@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { RichNode } from "@/lib/validation/rich-text";
 
+import { CONTENT_GROUPS } from "./registry";
+
 /** Cache tags. Admin actions call updateTag(tag) after a successful write. */
 export const TAGS = { content: "content", settings: "settings", menu: "menu", pages: "pages", faqs: "faqs" } as const;
 
@@ -40,7 +42,18 @@ export const isOwnerPreview = cache(async (): Promise<boolean> => {
  * so RLS still applies).
  */
 export const getContent = cache(async (): Promise<Content> => {
-  if (!(await isOwnerPreview())) return new Content(await fetchPublished(), false);
+  if (!(await isOwnerPreview())) {
+    try {
+      return new Content(await fetchPublished(), false);
+    } catch (error) {
+      // Database unreachable: serve the launch copy rather than an error page.
+      console.error("content fetch failed; using registry defaults", { error: (error as Error).message });
+      return new Content(
+        Object.fromEntries(CONTENT_GROUPS.flatMap((g) => g.items).map((d) => [d.key, d.default])),
+        false,
+      );
+    }
+  }
   // Preview never touches the shared cache (a draft-mode render that filled it
   // could race a publish and pin stale copy for visitors).
   const supabase = await createClient();
