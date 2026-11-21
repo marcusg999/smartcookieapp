@@ -1,0 +1,2 @@
+-- Local development seed data. Runs after migrations on `supabase db reset`.
+-- Never contains real customer data. Populated from Phase 2 onward.
