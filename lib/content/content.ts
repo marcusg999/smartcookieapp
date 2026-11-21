@@ -93,6 +93,18 @@ export class Content {
     return value && typeof value === "object" && value.type === "doc" ? value : null;
   }
 
+  /**
+   * Every text value under a prefix, keyed without it, for client components
+   * (e.g. group("order.") → { add: "Add", … }). Copy stays in the CMS.
+   */
+  group(prefix: string): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(this.values)) {
+      if (key.startsWith(prefix) && typeof value === "string") out[key.slice(prefix.length)] = value;
+    }
+    return out;
+  }
+
   json<T>(key: string, fallback: T): T {
     const value = this.values[key];
     return (value ?? fallback) as T;
