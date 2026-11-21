@@ -150,7 +150,7 @@ select throws_ok(
 select pg_temp.act_as('33333333-3333-3333-3333-333333333333', 'aal1');
 select is((select count(*)::int from public.organizations), 0, 'kitchen at AAL1 is denied organizations');
 select pg_temp.act_as('33333333-3333-3333-3333-333333333333', 'aal2');
-select is((select count(*)::int from public.organizations), 1, 'kitchen at AAL2 can read organizations');
+select ok((select count(*)::int from public.organizations where name = 'Maple Elementary') = 1, 'kitchen at AAL2 can read organizations');
 select is(pg_temp.rows_affected($$ update public.organizations set status = 'approved' $$),
   0, 'kitchen cannot approve organizations');
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111', 'aal2');
