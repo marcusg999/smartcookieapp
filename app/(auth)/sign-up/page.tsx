@@ -17,7 +17,10 @@ export default async function SignUpPage({ searchParams }: PageProps<"/sign-up">
         <CardDescription>Order healthy meals for your kids or your school.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <SignUpForm pilotMode={Boolean(settings?.pilot_mode)} initialType={sp.type === "school" ? "school" : "parent"} />
+        <SignUpForm
+          pilotMode={Boolean(settings?.pilot_mode)}
+          initialType={sp.type === "school" ? "school" : "parent"}
+        />
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link

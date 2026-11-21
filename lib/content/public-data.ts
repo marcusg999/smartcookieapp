@@ -12,7 +12,11 @@ import { TAGS } from "./content";
 
 export const getPublicPlans = unstable_cache(
   async (): Promise<Plan[]> => {
-    const { data } = await createPublicClient().from("plans").select(PLAN_COLUMNS).eq("audience", "family").order("sort_order");
+    const { data } = await createPublicClient()
+      .from("plans")
+      .select(PLAN_COLUMNS)
+      .eq("audience", "family")
+      .order("sort_order");
     return (data ?? []) as Plan[];
   },
   ["public-plans"],

@@ -41,23 +41,41 @@ describe("priceCart (mirrors _write_family_order)", () => {
   });
 
   it("waives delivery over the threshold and flags orders under the minimum", () => {
-    expect(priceCart({ lines: [{ childId: "a", menuItemId: "pasta", deliveryDate: "d", quantity: 6 }], meals, zone }).deliveryFeeCents).toBe(0);
-    expect(priceCart({ lines: [{ childId: "a", menuItemId: "cookie", deliveryDate: "d", quantity: 1 }], meals, zone }).belowMinimum).toBe(true);
+    expect(
+      priceCart({ lines: [{ childId: "a", menuItemId: "pasta", deliveryDate: "d", quantity: 6 }], meals, zone })
+        .deliveryFeeCents,
+    ).toBe(0);
+    expect(
+      priceCart({ lines: [{ childId: "a", menuItemId: "cookie", deliveryDate: "d", quantity: 1 }], meals, zone })
+        .belowMinimum,
+    ).toBe(true);
   });
 
   it("caps a fixed discount at the subtotal and never goes negative", () => {
-    const t = priceCart({ lines: [{ childId: "a", menuItemId: "cookie", deliveryDate: "d", quantity: 1 }], meals, discount: { type: "fixed", value: 1000 } });
+    const t = priceCart({
+      lines: [{ childId: "a", menuItemId: "cookie", deliveryDate: "d", quantity: 1 }],
+      meals,
+      discount: { type: "fixed", value: 1000 },
+    });
     expect(t.discountCents).toBe(300);
     expect(t.totalCents).toBe(0);
   });
 
   it("ignores lines for meals not on the menu", () => {
-    expect(priceCart({ lines: [{ childId: "a", menuItemId: "gone", deliveryDate: "d", quantity: 3 }], meals }).totalCents).toBe(0);
+    expect(
+      priceCart({ lines: [{ childId: "a", menuItemId: "gone", deliveryDate: "d", quantity: 3 }], meals }).totalCents,
+    ).toBe(0);
   });
 });
 
 describe("allowance math", () => {
-  const plan = { mealsPerInterval: 2, snacksPerInterval: 1, includesSnacks: true, interval: "week" as const, unit: "per_child" as const };
+  const plan = {
+    mealsPerInterval: 2,
+    snacksPerInterval: 1,
+    includesSnacks: true,
+    interval: "week" as const,
+    unit: "per_child" as const,
+  };
 
   it("spreads longer intervals across weeks, rounding up", () => {
     expect(weeklyShare(5, "week")).toBe(5);
@@ -75,7 +93,11 @@ describe("allowance math", () => {
       meals,
       plan,
     });
-    expect(t.lines.map((l) => [l.coveredQty, l.paidQty])).toEqual([[2, 1], [2, 0], [1, 1]]);
+    expect(t.lines.map((l) => [l.coveredQty, l.paidQty])).toEqual([
+      [2, 1],
+      [2, 0],
+      [1, 1],
+    ]);
     expect(t.subtotalCents).toBe(900 + 300);
     expect(t.mealsUsed).toEqual({ a: 2, b: 2 });
   });
@@ -95,8 +117,19 @@ describe("allowance math", () => {
   });
 
   it("covers nothing in a skipped week, and still qualifies for free delivery on full value", () => {
-    expect(priceCart({ lines: [{ childId: "a", menuItemId: "pasta", deliveryDate: "d", quantity: 1 }], meals, plan: { ...plan, skipped: true } }).subtotalCents).toBe(900);
-    const t = priceCart({ lines: [{ childId: "a", menuItemId: "pasta", deliveryDate: "d", quantity: 6 }], meals, plan: { ...plan, mealsPerInterval: 6 }, zone });
+    expect(
+      priceCart({
+        lines: [{ childId: "a", menuItemId: "pasta", deliveryDate: "d", quantity: 1 }],
+        meals,
+        plan: { ...plan, skipped: true },
+      }).subtotalCents,
+    ).toBe(900);
+    const t = priceCart({
+      lines: [{ childId: "a", menuItemId: "pasta", deliveryDate: "d", quantity: 6 }],
+      meals,
+      plan: { ...plan, mealsPerInterval: 6 },
+      zone,
+    });
     expect([t.subtotalCents, t.deliveryFeeCents, t.belowMinimum]).toEqual([0, 0, false]);
   });
 });
@@ -110,7 +143,9 @@ describe("allergy checks (mirror _blocking_allergens)", () => {
     expect(blockingAllergens({ allergies: [{ allergen: "Sesame", severity: "severe" }] }, meal)).toEqual(["Sesame"]);
   });
   it("respects an owner-approved override", () => {
-    expect(blockingAllergens({ allergies: [{ allergen: "Milk", severity: "allergy" }], overrides: ["m1"] }, meal)).toEqual([]);
+    expect(
+      blockingAllergens({ allergies: [{ allergen: "Milk", severity: "allergy" }], overrides: ["m1"] }, meal),
+    ).toEqual([]);
   });
 });
 
@@ -126,7 +161,17 @@ describe("planRepeat (swap suggestion)", () => {
 
   it("keeps meals still on the menu and maps the weekday", () => {
     const r = planRepeat({
-      lastLines: [{ childId: "kid1", menuItemId: "mac", deliveryDate: "2031-01-01", quantity: 1, name: "Mac", category: "Mains", isSnack: false }],
+      lastLines: [
+        {
+          childId: "kid1",
+          menuItemId: "mac",
+          deliveryDate: "2031-01-01",
+          quantity: 1,
+          name: "Mac",
+          category: "Mains",
+          isSnack: false,
+        },
+      ],
       lastWeekStart: "2030-12-30",
       weekStart: "2031-01-06",
       deliveryDates: ["2031-01-06", "2031-01-08"],
@@ -139,7 +184,17 @@ describe("planRepeat (swap suggestion)", () => {
 
   it("swaps a missing meal for a same-category one the child can eat, and reports it", () => {
     const r = planRepeat({
-      lastLines: [{ childId: "kid1", menuItemId: "gone", deliveryDate: "2030-12-30", quantity: 2, name: "Old stew", category: "Mains", isSnack: false }],
+      lastLines: [
+        {
+          childId: "kid1",
+          menuItemId: "gone",
+          deliveryDate: "2030-12-30",
+          quantity: 2,
+          name: "Old stew",
+          category: "Mains",
+          isSnack: false,
+        },
+      ],
       lastWeekStart: "2030-12-30",
       weekStart: "2031-01-06",
       deliveryDates: ["2031-01-06"],
@@ -153,7 +208,17 @@ describe("planRepeat (swap suggestion)", () => {
 
   it("never suggests a blocked meal and drops a line with no safe option", () => {
     const r = planRepeat({
-      lastLines: [{ childId: "kid1", menuItemId: "gone", deliveryDate: "2030-12-30", quantity: 1, name: "Bar", category: "Snacks", isSnack: true }],
+      lastLines: [
+        {
+          childId: "kid1",
+          menuItemId: "gone",
+          deliveryDate: "2030-12-30",
+          quantity: 1,
+          name: "Bar",
+          category: "Snacks",
+          isSnack: true,
+        },
+      ],
       lastWeekStart: "2030-12-30",
       weekStart: "2031-01-06",
       deliveryDates: ["2031-01-06"],
@@ -172,7 +237,12 @@ describe("cart lines", () => {
     lines = setLineQuantity(lines, base, 3);
     expect(lines).toEqual([{ ...base, quantity: 3 }]);
     expect(setLineQuantity(lines, base, 0)).toEqual([]);
-    expect(normalizeLines([{ ...base, quantity: 1 }, { ...base, quantity: 2 }])).toEqual([{ ...base, quantity: 3 }]);
+    expect(
+      normalizeLines([
+        { ...base, quantity: 1 },
+        { ...base, quantity: 2 },
+      ]),
+    ).toEqual([{ ...base, quantity: 3 }]);
   });
 });
 

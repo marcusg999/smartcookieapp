@@ -109,7 +109,14 @@ export function OrderScreen(props: Props) {
   );
   const count = lines.reduce((n, l) => n + l.quantity, 0);
   const categories = useMemo(
-    () => [...new Set(meals.filter((m) => !m.is_snack).map((m) => m.category).filter((c): c is string => Boolean(c)))],
+    () => [
+      ...new Set(
+        meals
+          .filter((m) => !m.is_snack)
+          .map((m) => m.category)
+          .filter((c): c is string => Boolean(c)),
+      ),
+    ],
     [meals],
   );
   const mains = meals.filter((m) => !m.is_snack && (!category || m.category === category));
@@ -134,9 +141,12 @@ export function OrderScreen(props: Props) {
       }
     }, 500);
   };
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
 
   /** Save any pending edit now (before leaving for checkout). */
   const flush = async () => {
@@ -161,10 +171,13 @@ export function OrderScreen(props: Props) {
     if (!child) return;
     const blocked = blockingAllergens(child, { id: meal.id, contains: meal.contains, mayContain: meal.may_contain });
     if (blocked.length && delta > 0) return; // Blocked assignments never reach the cart (CLAUDE.md §6).
-    update(setLineQuantity(lines, { childId: child.id, menuItemId: meal.id, deliveryDate: day }, qtyFor(meal.id) + delta));
+    update(
+      setLineQuantity(lines, { childId: child.id, menuItemId: meal.id, deliveryDate: day }, qtyFor(meal.id) + delta),
+    );
   };
 
-  const isFav = (mealId: string) => favorites.some((f) => f.menuItemId === mealId && (f.childId === childId || f.childId === null));
+  const isFav = (mealId: string) =>
+    favorites.some((f) => f.menuItemId === mealId && (f.childId === childId || f.childId === null));
 
   const toggleFav = (meal: OrderMeal) => {
     const existing = favorites.find((f) => f.menuItemId === meal.id && f.childId === childId);
@@ -184,11 +197,16 @@ export function OrderScreen(props: Props) {
       latest.current = res.data.lines;
       setSwapped(
         Object.fromEntries(
-          res.data.swaps.map((s) => [lineKey({ childId: s.childId, menuItemId: s.toId, deliveryDate: s.deliveryDate }), s.fromName]),
+          res.data.swaps.map((s) => [
+            lineKey({ childId: s.childId, menuItemId: s.toId, deliveryDate: s.deliveryDate }),
+            s.fromName,
+          ]),
         ),
       );
       for (const d of res.data.dropped) {
-        toast.error(fmt(copy.dropped, { name: kids.find((k) => k.id === d.childId)?.first_name ?? "", item: d.fromName }));
+        toast.error(
+          fmt(copy.dropped, { name: kids.find((k) => k.id === d.childId)?.first_name ?? "", item: d.fromName }),
+        );
       }
       toast.success(copy.repeat_done);
       setDrawer(true);
@@ -241,9 +259,15 @@ export function OrderScreen(props: Props) {
           {fmt(copy.editing, { number: props.editing.number })}
         </p>
       ) : props.existingOrder ? (
-        <p role="status" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-ink bg-paper px-4 py-2 font-semibold">
+        <p
+          role="status"
+          className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-ink bg-paper px-4 py-2 font-semibold"
+        >
           {fmt(copy.already_ordered, { number: props.existingOrder.number })}
-          <Link href={`/orders/${props.existingOrder.id}`} className="underline decoration-orange decoration-[3px] underline-offset-4">
+          <Link
+            href={`/orders/${props.existingOrder.id}`}
+            className="underline decoration-orange decoration-[3px] underline-offset-4"
+          >
             {copy.edit_order}
           </Link>
         </p>
@@ -264,19 +288,32 @@ export function OrderScreen(props: Props) {
           <Sparkles aria-hidden="true" /> {copy.fill_favorites}
         </Button>
         {subscription?.canSkip ? (
-          <Button onClick={() => skip(!subscription.skipped)} disabled={busy} variant="outline" size="lg" className="shrink-0">
+          <Button
+            onClick={() => skip(!subscription.skipped)}
+            disabled={busy}
+            variant="outline"
+            size="lg"
+            className="shrink-0"
+          >
             <PauseCircle aria-hidden="true" /> {subscription.skipped ? copy.unskip_week : copy.skip_week}
           </Button>
         ) : null}
         {props.savedOrders.length ? (
-          <a href="#saved-orders" className="inline-flex h-13 shrink-0 items-center gap-2 rounded-lg border-2 border-ink bg-card px-5 font-semibold shadow-ink-sm">
+          <a
+            href="#saved-orders"
+            className="inline-flex h-13 shrink-0 items-center gap-2 rounded-lg border-2 border-ink bg-card px-5 font-semibold shadow-ink-sm"
+          >
             <Bookmark aria-hidden="true" className="size-4" /> {copy.saved_orders}
           </a>
         ) : null}
       </div>
 
       {/* Child tabs */}
-      <div role="tablist" aria-label={copy.kids_label} className="sticky top-14 z-20 -mx-4 flex gap-2 overflow-x-auto border-b-2 border-ink bg-background/95 px-4 py-2 backdrop-blur">
+      <div
+        role="tablist"
+        aria-label={copy.kids_label}
+        className="sticky top-14 z-20 -mx-4 flex gap-2 overflow-x-auto border-b-2 border-ink bg-background/95 px-4 py-2 backdrop-blur"
+      >
         {kids.map((k) => {
           const n = lines.filter((l) => l.childId === k.id).reduce((s, l) => s + l.quantity, 0);
           const active = k.id === childId;
@@ -305,7 +342,10 @@ export function OrderScreen(props: Props) {
       {plan && !plan.skipped ? (
         <div className="mt-4 rounded-xl border-2 border-ink bg-paper p-3">
           <p className="text-sm font-bold">
-            {fmt(plan.unit === "per_child" ? copy.allowance : copy.allowance_household, { used, total: totals.mealShare })}
+            {fmt(plan.unit === "per_child" ? copy.allowance : copy.allowance_household, {
+              used,
+              total: totals.mealShare,
+            })}
           </p>
           <div className="mt-2 h-3 overflow-hidden rounded-full border-2 border-ink bg-background" aria-hidden="true">
             <div
@@ -320,7 +360,9 @@ export function OrderScreen(props: Props) {
       {/* Day picker */}
       <div className="mt-4 flex flex-wrap items-center gap-2" role="radiogroup" aria-label={copy.day_label}>
         {days.map((d) => {
-          const n = lines.filter((l) => l.childId === childId && l.deliveryDate === d).reduce((s, l) => s + l.quantity, 0);
+          const n = lines
+            .filter((l) => l.childId === childId && l.deliveryDate === d)
+            .reduce((s, l) => s + l.quantity, 0);
           return (
             <button
               key={d}
@@ -375,7 +417,11 @@ export function OrderScreen(props: Props) {
       ) : null}
 
       {/* Saved orders */}
-      <section id="saved-orders" aria-labelledby="saved-h" className="mt-12 rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink">
+      <section
+        id="saved-orders"
+        aria-labelledby="saved-h"
+        className="mt-12 rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink"
+      >
         <h2 id="saved-h" className="text-2xl font-black">
           {copy.saved_orders}
         </h2>
@@ -463,7 +509,9 @@ export function OrderScreen(props: Props) {
                 </button>
               </div>
               {kids.map((k) => {
-                const mine = totals.lines.filter((l) => l.childId === k.id).sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
+                const mine = totals.lines
+                  .filter((l) => l.childId === k.id)
+                  .sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
                 if (!mine.length) return null;
                 return (
                   <div key={k.id} className="mb-3">
@@ -483,12 +531,16 @@ export function OrderScreen(props: Props) {
                               <span className="font-semibold">{formatDay(l.deliveryDate, { weekday: "short" })}</span> ·{" "}
                               {mealById.get(l.menuItemId)?.name} × {l.quantity}
                               {swapped[key] ? (
-                                <span className="ml-1 text-xs font-bold">({fmt(copy.swapped, { from: swapped[key]! })})</span>
+                                <span className="ml-1 text-xs font-bold">
+                                  ({fmt(copy.swapped, { from: swapped[key]! })})
+                                </span>
                               ) : null}
                             </span>
                             <span className="flex items-center gap-2">
                               <span className="font-semibold">
-                                {l.coveredQty > 0 && l.paidQty === 0 ? copy.included : formatCents(l.unitPriceCents * l.paidQty)}
+                                {l.coveredQty > 0 && l.paidQty === 0
+                                  ? copy.included
+                                  : formatCents(l.unitPriceCents * l.paidQty)}
                               </span>
                               <button
                                 className="rounded p-1"
@@ -529,7 +581,7 @@ export function OrderScreen(props: Props) {
               <ChevronUp aria-hidden="true" className={cn("size-5 transition-transform", drawer && "rotate-180")} />
               <span>
                 <span className="block text-sm font-bold" aria-live="polite">
-                  {count ? fmt(copy.cart_items, { count }) : copy.cart_empty}
+                  {count === 1 ? copy.cart_item_one : count ? fmt(copy.cart_items, { count }) : copy.cart_empty}
                 </span>
                 <span className="block text-lg leading-tight font-black">
                   {copy.subtotal} {formatCents(totals.subtotalCents)}
@@ -561,7 +613,11 @@ export function OrderScreen(props: Props) {
     return (
       <ul className={cn("mt-5 grid gap-4", compact ? "grid-cols-2 sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-3")}>
         {list.map((meal, i) => {
-          const blocked = blockingAllergens(child!, { id: meal.id, contains: meal.contains, mayContain: meal.may_contain });
+          const blocked = blockingAllergens(child!, {
+            id: meal.id,
+            contains: meal.contains,
+            mayContain: meal.may_contain,
+          });
           const warn = warningAllergens(child!, { contains: meal.contains, mayContain: meal.may_contain });
           const overridden = child!.overrides.includes(meal.id) && meal.contains.length > 0;
           const qty = qtyFor(meal.id);
@@ -572,19 +628,32 @@ export function OrderScreen(props: Props) {
               style={{ "--tilt": `${[-0.8, 0.6, -0.4][i % 3]}deg` } as React.CSSProperties}
               className={cn(
                 "reveal-up flex flex-col overflow-hidden rounded-2xl border-2 bg-paper transition-[transform,box-shadow] duration-200",
-                blocked.length ? "border-allergy/60 opacity-80" : "border-ink shadow-ink hover:-translate-y-0.5 hover:shadow-ink-lg",
+                blocked.length
+                  ? "border-allergy/60 opacity-80"
+                  : "border-ink shadow-ink hover:-translate-y-0.5 hover:shadow-ink-lg",
                 qty > 0 && "ring-4 ring-orange",
               )}
             >
               <div className="relative">
-                <MealImage path={meal.image?.path} alt="" className={cn(compact ? "aspect-[4/3]" : "aspect-[16/10]", "border-b-2 border-ink")} sizes="(min-width: 768px) 320px, 100vw" />
+                <MealImage
+                  path={meal.image?.path}
+                  alt=""
+                  className={cn(compact ? "aspect-[4/3]" : "aspect-[16/10]", "border-b-2 border-ink")}
+                  sizes="(min-width: 768px) 320px, 100vw"
+                />
                 <button
                   onClick={() => toggleFav(meal)}
                   aria-pressed={isFav(meal.id)}
                   aria-label={`${isFav(meal.id) ? copy.unfavorite : copy.favorite}: ${meal.name}`}
                   className="absolute top-2 right-2 grid size-11 place-items-center rounded-full border-2 border-ink bg-paper shadow-ink-sm transition-transform active:scale-90"
                 >
-                  <Heart aria-hidden="true" className={cn("size-5", isFav(meal.id) && "animate-[pop_.3s_ease-out] fill-raspberry text-raspberry")} />
+                  <Heart
+                    aria-hidden="true"
+                    className={cn(
+                      "size-5",
+                      isFav(meal.id) && "animate-[pop_.3s_ease-out] fill-raspberry text-raspberry",
+                    )}
+                  />
                 </button>
                 {included && !blocked.length ? (
                   <span className="absolute bottom-2 left-2 rounded-full border-2 border-ink bg-orange px-2 py-0.5 text-xs font-black">
@@ -597,7 +666,9 @@ export function OrderScreen(props: Props) {
                   <h3 className={cn("leading-tight font-bold", compact ? "text-base" : "text-xl")}>{meal.name}</h3>
                   <span className="shrink-0 font-bold">{formatCents(meal.price_cents)}</span>
                 </div>
-                {!compact && meal.short_description ? <p className="text-sm leading-snug">{meal.short_description}</p> : null}
+                {!compact && meal.short_description ? (
+                  <p className="text-sm leading-snug">{meal.short_description}</p>
+                ) : null}
                 <div className="flex flex-wrap gap-1">
                   {meal.badges.map((b) => (
                     <span key={b} className="rounded-full border border-ink bg-orange-tint px-2 text-xs font-semibold">
@@ -628,7 +699,12 @@ export function OrderScreen(props: Props) {
                     </div>
                   ) : qty > 0 ? (
                     <div className="flex items-center justify-between rounded-lg border-2 border-ink bg-orange-tint p-1">
-                      <Button size="icon" variant="outline" onClick={() => change(meal, -1)} aria-label={`${copy.remove}: ${meal.name}`}>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => change(meal, -1)}
+                        aria-label={`${copy.remove}: ${meal.name}`}
+                      >
                         <Minus aria-hidden="true" />
                       </Button>
                       <span className="font-black" aria-live="polite">
@@ -639,13 +715,21 @@ export function OrderScreen(props: Props) {
                       </Button>
                     </div>
                   ) : (
-                    <Button className="w-full" onClick={() => change(meal, 1)} aria-label={`${fmt(copy.add_for, { name: child!.first_name })}: ${meal.name}`}>
+                    <Button
+                      className="w-full"
+                      onClick={() => change(meal, 1)}
+                      aria-label={`${fmt(copy.add_for, { name: child!.first_name })}: ${meal.name}`}
+                    >
                       <Plus aria-hidden="true" /> {fmt(copy.add_for, { name: child!.first_name })}
                     </Button>
                   )}
-                  {overridden ? <p className="mt-1 text-xs font-semibold">{fmt(copy.override, { name: child!.first_name })}</p> : null}
+                  {overridden ? (
+                    <p className="mt-1 text-xs font-semibold">{fmt(copy.override, { name: child!.first_name })}</p>
+                  ) : null}
                   {warn.length && !blocked.length ? (
-                    <p className="mt-1 text-xs font-semibold text-allergy">{fmt(copy.warning, { allergens: warn.join(", ") })}</p>
+                    <p className="mt-1 text-xs font-semibold text-allergy">
+                      {fmt(copy.warning, { allergens: warn.join(", ") })}
+                    </p>
                   ) : null}
                 </div>
               </div>

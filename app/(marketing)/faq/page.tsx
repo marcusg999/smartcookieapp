@@ -11,7 +11,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function FaqPage() {
-  const [c, faqs, settings] = await Promise.all([getContent(), getPublishedFaqs().catch(() => []), getPublicSettings().catch(() => null)]);
+  const [c, faqs, settings] = await Promise.all([
+    getContent(),
+    getPublishedFaqs().catch(() => []),
+    getPublicSettings().catch(() => null),
+  ]);
   const groups = [...new Set(faqs.map((f) => f.category ?? ""))];
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-14 md:py-20">
@@ -19,7 +23,10 @@ export default async function FaqPage() {
       <p className="mt-4 max-w-2xl text-lg">
         {c.text("faq.subtitle")}{" "}
         {settings?.contact_email ? (
-          <a className="font-semibold underline decoration-orange decoration-[3px] underline-offset-4" href={`mailto:${settings.contact_email}`}>
+          <a
+            className="font-semibold underline decoration-orange decoration-[3px] underline-offset-4"
+            href={`mailto:${settings.contact_email}`}
+          >
             {settings.contact_email}
           </a>
         ) : null}
@@ -32,10 +39,16 @@ export default async function FaqPage() {
             {faqs
               .filter((f) => (f.category ?? "") === g)
               .map((f) => (
-                <details key={f.id} className="group reveal-up rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink-sm open:shadow-ink">
+                <details
+                  key={f.id}
+                  className="group reveal-up rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink-sm open:shadow-ink"
+                >
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-bold">
                     {f.question}
-                    <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink bg-orange text-xl transition-transform group-open:rotate-45">
+                    <span
+                      aria-hidden="true"
+                      className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink bg-orange text-xl transition-transform group-open:rotate-45"
+                    >
                       +
                     </span>
                   </summary>

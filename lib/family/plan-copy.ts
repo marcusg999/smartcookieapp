@@ -16,10 +16,14 @@ export function describePlan(p: Plan, c: Content) {
         : c.text("home.plans.per_two_weeks");
   const points = [
     `${c.text("plans.meals_label", { count: String(p.meals_per_interval) })} ${p.allowance_unit === "per_child" ? c.text("plans.per_child") : c.text("plans.per_household")}`,
-    p.includes_snacks && p.snacks_per_interval ? c.text("plans.snacks_label", { count: String(p.snacks_per_interval) }) : null,
+    p.includes_snacks && p.snacks_per_interval
+      ? c.text("plans.snacks_label", { count: String(p.snacks_per_interval) })
+      : null,
     p.allow_skip && p.max_skips_per_month ? c.text("plans.skip_label", { count: String(p.max_skips_per_month) }) : null,
     p.allow_pause ? c.text("plans.pause_label") : null,
-    p.price_per_extra_meal_cents ? c.text("plans.extra_label", { price: formatCents(p.price_per_extra_meal_cents, p.currency) }) : null,
+    p.price_per_extra_meal_cents
+      ? c.text("plans.extra_label", { price: formatCents(p.price_per_extra_meal_cents, p.currency) })
+      : null,
   ].filter((x): x is string => Boolean(x));
   return {
     id: p.id,

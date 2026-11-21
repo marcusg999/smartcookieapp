@@ -43,9 +43,13 @@ export default async function SubscriptionPage() {
                 status: sub.status,
                 statusLabel: c.text(`sub.status_${sub.status}`),
                 pausedUntilLabel:
-                  sub.paused_until && !isPast(sub.paused_until) ? c.text("sub.paused_until", { date: date(sub.paused_until) }) : null,
+                  sub.paused_until && !isPast(sub.paused_until)
+                    ? c.text("sub.paused_until", { date: date(sub.paused_until) })
+                    : null,
                 cancelAtPeriodEnd: sub.cancel_at_period_end,
-                nextBillLabel: sub.current_period_end ? c.text("sub.next_bill", { date: date(sub.current_period_end) }) : null,
+                nextBillLabel: sub.current_period_end
+                  ? c.text("sub.next_bill", { date: date(sub.current_period_end) })
+                  : null,
                 pendingPlanName: plans.find((p) => p.id === sub.pending_plan_id)?.name ?? null,
                 allowPause: sub.plan.allow_pause,
               }

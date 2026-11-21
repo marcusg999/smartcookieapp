@@ -40,13 +40,23 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
     if (order) {
       const lines = order.items
         .filter((i) => i.child_id && i.menu_item_id && i.delivery_date)
-        .map((i) => ({ childId: i.child_id!, menuItemId: i.menu_item_id!, deliveryDate: i.delivery_date!, quantity: i.quantity }));
+        .map((i) => ({
+          childId: i.child_id!,
+          menuItemId: i.menu_item_id!,
+          deliveryDate: i.delivery_date!,
+          quantity: i.quantity,
+        }));
       return (
         <div className="mx-auto w-full max-w-2xl">
           <PageTitle>{copy.title}</PageTitle>
           <PaymentPanel
             copy={copy}
-            placed={{ orderId: order.id, orderNumber: order.order_number, totalCents: order.total_cents, status: order.status }}
+            placed={{
+              orderId: order.id,
+              orderNumber: order.order_number,
+              totalCents: order.total_cents,
+              status: order.status,
+            }}
             lines={normalizeLines(lines)}
             replacing={false}
             testMode={stripeMockMode()}
@@ -82,7 +92,11 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
     );
   }
 
-  const [kids, addresses, sub] = await Promise.all([getChildren(household.id), getAddresses(household.id), getSubscription(household.id)]);
+  const [kids, addresses, sub] = await Promise.all([
+    getChildren(household.id),
+    getAddresses(household.id),
+    getSubscription(household.id),
+  ]);
   const allowance = sub ? await getAllowance(sub.id, week.id) : null;
   const plan = toPlanAllowance(sub, allowance?.skipped ?? false);
   const usedElsewhere = await getUsedElsewhere(household.id, week.id, plan, cart.replacesOrderId);

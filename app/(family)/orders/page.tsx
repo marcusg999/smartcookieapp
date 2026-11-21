@@ -28,9 +28,12 @@ export default async function OrdersPage() {
         className="flex items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-paper p-4 shadow-ink-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-ink"
       >
         <span className="space-y-0.5">
-          <span className="block font-black">{fmt(c.text("orders.week_of"), { date: formatDay(o.week_start, { month: "short", day: "numeric" }) })}</span>
+          <span className="block font-black">
+            {fmt(c.text("orders.week_of"), { date: formatDay(o.week_start, { month: "short", day: "numeric" }) })}
+          </span>
           <span className="block text-sm text-muted-foreground">
-            {o.order_number} · {fmt(c.text("orders.items"), { count: o.item_count })}
+            {o.order_number} ·{" "}
+            {o.item_count === 1 ? c.text("orders.item_one") : fmt(c.text("orders.items"), { count: o.item_count })}
           </span>
         </span>
         <span className="flex items-center gap-3">

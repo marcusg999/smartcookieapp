@@ -69,7 +69,8 @@ export function CheckoutFlow({
   });
   const discountCents = discount ? Math.min(discount.cents, totals.subtotalCents) : 0;
   const estimate = totals.subtotalCents + totals.deliveryFeeCents - discountCents;
-  const deliveryReady = fulfillment === "school_dropoff" ? canSchool : Boolean(addressId && zone) && !totals.belowMinimum;
+  const deliveryReady =
+    fulfillment === "school_dropoff" ? canSchool : Boolean(addressId && zone) && !totals.belowMinimum;
 
   const place = (confirmIds: string[]) =>
     start(async () => {
@@ -111,7 +112,9 @@ export function CheckoutFlow({
       {step === "review" ? (
         <section className="space-y-5">
           {kidsInCart.map((k) => {
-            const mine = totals.lines.filter((l) => l.childId === k.id).sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
+            const mine = totals.lines
+              .filter((l) => l.childId === k.id)
+              .sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
             return (
               <div key={k.id} className="rounded-2xl border-2 border-ink bg-paper p-4 shadow-ink">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -122,11 +125,13 @@ export function CheckoutFlow({
                   {mine.map((l) => (
                     <li key={`${l.menuItemId}${l.deliveryDate}`} className="flex justify-between gap-3 py-1.5 text-sm">
                       <span>
-                        <span className="font-semibold">{formatDay(l.deliveryDate)}</span> · {mealMap.get(l.menuItemId)?.name} ×{" "}
-                        {l.quantity}
+                        <span className="font-semibold">{formatDay(l.deliveryDate)}</span> ·{" "}
+                        {mealMap.get(l.menuItemId)?.name} × {l.quantity}
                       </span>
                       <span className="shrink-0 font-semibold">
-                        {l.coveredQty ? `${copy.included}${l.paidQty ? ` + ${formatCents(l.paidQty * l.unitPriceCents)}` : ""}` : formatCents(l.paidQty * l.unitPriceCents)}
+                        {l.coveredQty
+                          ? `${copy.included}${l.paidQty ? ` + ${formatCents(l.paidQty * l.unitPriceCents)}` : ""}`
+                          : formatCents(l.paidQty * l.unitPriceCents)}
                       </span>
                     </li>
                   ))}
@@ -150,7 +155,12 @@ export function CheckoutFlow({
           >
             <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
               {copy.discount_code}
-              <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={40} autoCapitalize="characters" />
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                maxLength={40}
+                autoCapitalize="characters"
+              />
             </label>
             <Button type="submit" variant="outline" disabled={!code || pending}>
               {copy.apply}
@@ -173,7 +183,13 @@ export function CheckoutFlow({
           <fieldset className="space-y-3">
             <legend className="sr-only">{copy.step_delivery}</legend>
             <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-ink bg-paper p-4 has-checked:bg-orange-tint has-checked:shadow-ink">
-              <input type="radio" name="fulfillment" checked={fulfillment === "delivery"} onChange={() => setFulfillment("delivery")} className="mt-1 size-5 accent-[var(--ink)]" />
+              <input
+                type="radio"
+                name="fulfillment"
+                checked={fulfillment === "delivery"}
+                onChange={() => setFulfillment("delivery")}
+                className="mt-1 size-5 accent-[var(--ink)]"
+              />
               <span className="flex-1">
                 <span className="flex items-center gap-2 font-bold">
                   <MapPin aria-hidden="true" className="size-4" /> {copy.deliver_home}
@@ -183,7 +199,13 @@ export function CheckoutFlow({
                     <span className="mt-2 block space-y-2">
                       {addresses.map((a) => (
                         <label key={a.id} className="flex items-center gap-2 text-sm">
-                          <input type="radio" name="address" checked={addressId === a.id} onChange={() => setAddressId(a.id)} className="size-4 accent-[var(--ink)]" />
+                          <input
+                            type="radio"
+                            name="address"
+                            checked={addressId === a.id}
+                            onChange={() => setAddressId(a.id)}
+                            className="size-4 accent-[var(--ink)]"
+                          />
                           <span>
                             {a.label}
                             {a.zone ? (
@@ -197,14 +219,23 @@ export function CheckoutFlow({
                     </span>
                   ) : null
                 ) : null}
-                <Link href="/account/addresses?return=/checkout" className="mt-2 inline-block text-sm font-semibold underline decoration-orange decoration-[3px] underline-offset-4">
+                <Link
+                  href="/account/addresses?return=/checkout"
+                  className="mt-2 inline-block text-sm font-semibold underline decoration-orange decoration-[3px] underline-offset-4"
+                >
                   {copy.add_address}
                 </Link>
               </span>
             </label>
             {canSchool ? (
               <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-ink bg-paper p-4 has-checked:bg-orange-tint has-checked:shadow-ink">
-                <input type="radio" name="fulfillment" checked={fulfillment === "school_dropoff"} onChange={() => setFulfillment("school_dropoff")} className="mt-1 size-5 accent-[var(--ink)]" />
+                <input
+                  type="radio"
+                  name="fulfillment"
+                  checked={fulfillment === "school_dropoff"}
+                  onChange={() => setFulfillment("school_dropoff")}
+                  className="mt-1 size-5 accent-[var(--ink)]"
+                />
                 <span>
                   <span className="flex items-center gap-2 font-bold">
                     <School aria-hidden="true" className="size-4" /> {copy.deliver_school}
@@ -216,7 +247,13 @@ export function CheckoutFlow({
           </fieldset>
           <label className="flex flex-col gap-1 text-sm font-semibold">
             {copy.notes}
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} rows={2} className="rounded-md border-2 border-ink bg-paper px-3 py-2 font-normal" />
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={1000}
+              rows={2}
+              className="rounded-md border-2 border-ink bg-paper px-3 py-2 font-normal"
+            />
           </label>
           <Totals copy={copy} totals={totals} discountCents={discountCents} estimate={estimate} zone={zone} />
           <div className="flex justify-between gap-3">
@@ -240,7 +277,13 @@ export function CheckoutFlow({
             {kidsInCart.map((k) => {
               const ok = confirmed.includes(k.id);
               return (
-                <li key={k.id} className={cn("flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-paper p-4", ok && "bg-orange-tint")}>
+                <li
+                  key={k.id}
+                  className={cn(
+                    "flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-paper p-4",
+                    ok && "bg-orange-tint",
+                  )}
+                >
                   <div className="space-y-1">
                     <p className="text-lg font-black">{k.first_name}</p>
                     <AllergyChips allergies={k.allergies} emptyLabel={copy.allergy_none} />
@@ -319,10 +362,14 @@ function Totals({
           <dt>
             {copy.delivery_fee}
             {zone.freeOverCents !== null && totals.deliveryFeeCents > 0 ? (
-              <span className="ml-1 text-xs text-muted-foreground">({fmt(copy.free_over, { amount: formatCents(zone.freeOverCents) })})</span>
+              <span className="ml-1 text-xs text-muted-foreground">
+                ({fmt(copy.free_over, { amount: formatCents(zone.freeOverCents) })})
+              </span>
             ) : null}
           </dt>
-          <dd className="font-semibold">{totals.deliveryFeeCents ? formatCents(totals.deliveryFeeCents) : copy.free}</dd>
+          <dd className="font-semibold">
+            {totals.deliveryFeeCents ? formatCents(totals.deliveryFeeCents) : copy.free}
+          </dd>
         </div>
       ) : null}
       {discountCents ? (
@@ -365,7 +412,7 @@ export function PaymentPanel({
   const [pending, start] = useTransition();
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {(
+      {
         <section className="space-y-5">
           {paid ? (
             <div className="rounded-3xl border-2 border-ink bg-orange p-6 text-center shadow-ink-lg">
@@ -421,12 +468,16 @@ export function PaymentPanel({
             </form>
           ) : null}
           <div className="flex justify-center">
-            <Button size="lg" variant={paid ? "default" : "outline"} onClick={() => router.push(`/orders/${placed.orderId}`)}>
+            <Button
+              size="lg"
+              variant={paid ? "default" : "outline"}
+              onClick={() => router.push(`/orders/${placed.orderId}`)}
+            >
               {copy.view_order}
             </Button>
           </div>
         </section>
-      )}
+      }
     </div>
   );
 }

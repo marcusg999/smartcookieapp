@@ -16,7 +16,10 @@ const ICONS = [ClipboardList, Building2, Receipt];
 export default async function SchoolsPage() {
   const c = await getContent();
   const cta = c.cta("schools.cta");
-  const points = [1, 2, 3].map((n) => ({ title: c.text(`schools.point${n}_title`), body: c.text(`schools.point${n}_body`) }));
+  const points = [1, 2, 3].map((n) => ({
+    title: c.text(`schools.point${n}_title`),
+    body: c.text(`schools.point${n}_body`),
+  }));
   return (
     <>
       <section className="relative overflow-hidden bg-ink text-paper">

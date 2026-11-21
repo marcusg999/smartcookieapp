@@ -15,7 +15,13 @@ import { OAuthButtons } from "./oauth-buttons";
 import { PasswordStrengthMeter } from "./password-strength-meter";
 import { Turnstile } from "./turnstile";
 
-export function SignUpForm({ pilotMode = false, initialType = "parent" }: { pilotMode?: boolean; initialType?: "parent" | "school" }) {
+export function SignUpForm({
+  pilotMode = false,
+  initialType = "parent",
+}: {
+  pilotMode?: boolean;
+  initialType?: "parent" | "school";
+}) {
   const [accountType, setAccountType] = useState<"parent" | "school">(initialType);
   const [organizationName, setOrganizationName] = useState("");
   const [password, setPassword] = useState("");

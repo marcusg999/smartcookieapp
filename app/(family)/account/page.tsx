@@ -1,4 +1,16 @@
-import { Bookmark, CalendarCheck, CalendarX, KeyRound, Lock, MapPin, Repeat2, ShieldCheck, Smile, Sparkles, Wallet } from "lucide-react";
+import {
+  Bookmark,
+  CalendarCheck,
+  CalendarX,
+  KeyRound,
+  Lock,
+  MapPin,
+  Repeat2,
+  ShieldCheck,
+  Smile,
+  Sparkles,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -9,7 +21,15 @@ import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/guards";
 import { getContent } from "@/lib/content/content";
 import { getPublicSettings } from "@/lib/content/settings";
-import { getAllowance, getChildren, getHousehold, getOrderableWeeks, getProfile, getSubscription, getWeekOrder } from "@/lib/family/queries";
+import {
+  getAllowance,
+  getChildren,
+  getHousehold,
+  getOrderableWeeks,
+  getProfile,
+  getSubscription,
+  getWeekOrder,
+} from "@/lib/family/queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatDay, formatInZone } from "@/lib/time";
 
@@ -35,7 +55,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
   if (household && !household.onboarded_at && kids.length === 0 && sp.skip !== "1") redirect("/welcome");
 
   const week = weeks[0];
-  const [order, sub] = household && week ? await Promise.all([getWeekOrder(household.id, week.id), getSubscription(household.id)]) : [null, null];
+  const [order, sub] =
+    household && week
+      ? await Promise.all([getWeekOrder(household.id, week.id), getSubscription(household.id)])
+      : [null, null];
   const allowance = sub && week ? await getAllowance(sub.id, week.id) : null;
   const status = order ? "ordered" : allowance?.skipped ? "skipped" : "not";
 
@@ -43,9 +66,24 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
     { href: "/children", icon: Smile, title: c.text("acct.kids"), body: c.text("acct.kids_body") },
     { href: "/subscription", icon: Wallet, title: c.text("acct.subscription"), body: c.text("acct.subscription_body") },
     { href: "/account/addresses", icon: MapPin, title: c.text("acct.addresses"), body: c.text("acct.addresses_body") },
-    { href: "/order#saved-orders", icon: Bookmark, title: c.text("acct.saved_orders"), body: c.text("acct.saved_orders_body") },
-    { href: "/account/security", icon: ShieldCheck, title: c.text("account.security.title"), body: c.text("account.security.body") },
-    { href: "/account/privacy", icon: Lock, title: c.text("account.privacy.title"), body: c.text("account.privacy.body") },
+    {
+      href: "/order#saved-orders",
+      icon: Bookmark,
+      title: c.text("acct.saved_orders"),
+      body: c.text("acct.saved_orders_body"),
+    },
+    {
+      href: "/account/security",
+      icon: ShieldCheck,
+      title: c.text("account.security.title"),
+      body: c.text("account.security.body"),
+    },
+    {
+      href: "/account/privacy",
+      icon: Lock,
+      title: c.text("account.privacy.title"),
+      body: c.text("account.privacy.body"),
+    },
   ];
 
   return (
@@ -65,7 +103,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       </div>
 
       {household && !household.onboarded_at ? (
-        <Link href="/welcome" className="flex items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-orange p-4 font-bold shadow-ink transition-transform hover:-translate-y-0.5">
+        <Link
+          href="/welcome"
+          className="flex items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-orange p-4 font-bold shadow-ink transition-transform hover:-translate-y-0.5"
+        >
           <span className="flex items-center gap-2">
             <Sparkles aria-hidden="true" className="size-5" /> {c.text("acct.finish_setup")}
           </span>
@@ -74,20 +115,38 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       ) : null}
 
       {week ? (
-        <section aria-labelledby="week-h" className="rounded-3xl border-2 border-ink bg-paper p-5 shadow-ink-lg md:-rotate-[0.4deg]">
+        <section
+          aria-labelledby="week-h"
+          className="rounded-3xl border-2 border-ink bg-paper p-5 shadow-ink-lg md:-rotate-[0.4deg]"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 id="week-h" className="text-sm font-black uppercase">
                 {c.text("acct.this_week")} · {formatDay(week.week_start, { month: "short", day: "numeric" })}
               </h2>
               <p className="mt-1 flex items-center gap-2 text-3xl font-black">
-                {status === "ordered" ? <CalendarCheck aria-hidden="true" className="size-7" /> : <CalendarX aria-hidden="true" className="size-7" />}
-                {status === "ordered" ? c.text("acct.ordered") : status === "skipped" ? c.text("acct.skipped") : c.text("acct.not_ordered")}
+                {status === "ordered" ? (
+                  <CalendarCheck aria-hidden="true" className="size-7" />
+                ) : (
+                  <CalendarX aria-hidden="true" className="size-7" />
+                )}
+                {status === "ordered"
+                  ? c.text("acct.ordered")
+                  : status === "skipped"
+                    ? c.text("acct.skipped")
+                    : c.text("acct.not_ordered")}
               </p>
               {week.cutoff ? (
                 <p className="mt-1 text-sm font-semibold">
-                  {fmt(c.text("order.cutoff"), { date: formatInZone(week.cutoff, tz, { weekday: "short", hour: "numeric", minute: "2-digit" }) })} ·{" "}
-                  <Countdown cutoff={week.cutoff} template={c.text("order.countdown")} closedLabel={c.text("order.closed")} />
+                  {fmt(c.text("order.cutoff"), {
+                    date: formatInZone(week.cutoff, tz, { weekday: "short", hour: "numeric", minute: "2-digit" }),
+                  })}{" "}
+                  ·{" "}
+                  <Countdown
+                    cutoff={week.cutoff}
+                    template={c.text("order.countdown")}
+                    closedLabel={c.text("order.closed")}
+                  />
                 </p>
               ) : null}
             </div>
@@ -119,7 +178,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       )}
 
       {(passkeys ?? []).length === 0 ? (
-        <Link href="/account/security" className="flex items-start gap-3 rounded-2xl border-2 border-ink bg-orange-tint p-4">
+        <Link
+          href="/account/security"
+          className="flex items-start gap-3 rounded-2xl border-2 border-ink bg-orange-tint p-4"
+        >
           <KeyRound aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
           <span>
             <span className="block font-bold">{c.text("account.passkey_offer.title")}</span>

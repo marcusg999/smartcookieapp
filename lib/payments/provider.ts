@@ -49,8 +49,8 @@ const mockProvider: PaymentProvider = {
       .eq("id", subscriptionId)
       .maybeSingle();
     if (!sub || sub.status !== "incomplete") return { ok: false, message: "This plan can't be started." };
-    const interval = ((sub as unknown as { plans: { billing_interval: keyof typeof INTERVAL_DAYS } }).plans?.billing_interval ??
-      "week") as keyof typeof INTERVAL_DAYS;
+    const interval = ((sub as unknown as { plans: { billing_interval: keyof typeof INTERVAL_DAYS } }).plans
+      ?.billing_interval ?? "week") as keyof typeof INTERVAL_DAYS;
     const now = new Date();
     const { error } = await admin
       .from("subscriptions")

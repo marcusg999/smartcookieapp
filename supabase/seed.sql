@@ -209,8 +209,8 @@ begin
   select household_id into v_h2 from public.household_members where user_id = 'a0000000-0000-4000-8000-000000000005';
   select id into v_org from public.organizations where name = 'Maple Grove Elementary';
 
-  update public.households set name = 'The Patel household', default_zone_id = 'd1000000-0000-4000-8000-000000000001' where id = v_h1;
-  update public.households set name = 'The Rivera household', default_zone_id = 'd1000000-0000-4000-8000-000000000002' where id = v_h2;
+  update public.households set name = 'The Patel household', default_zone_id = 'd1000000-0000-4000-8000-000000000001', onboarded_at = now(), ordering_preference = 'a_la_carte' where id = v_h1;
+  update public.households set name = 'The Rivera household', default_zone_id = 'd1000000-0000-4000-8000-000000000002', onboarded_at = now(), ordering_preference = 'a_la_carte' where id = v_h2;
 
   insert into public.addresses (id, household_id, line1, city, zip, delivery_notes, is_default) values
     ('ad000000-0000-4000-8000-000000000001', v_h1, '450 Orange Grove Blvd', 'Pasadena', '91105', 'Leave on the porch bench.', true),
@@ -488,6 +488,7 @@ insert into public.content_blocks (key, type, description, draft_value, publishe
   ('order.already_ordered', 'text', 'Already ordered (use {number})', '"You''ve ordered for this week ({number})."', '"You''ve ordered for this week ({number})."', now()),
   ('order.edit_order', 'text', 'Change order button', '"Change order"', '"Change order"', now()),
   ('order.cart_items', 'text', 'Cart bar count (use {count})', '"{count} meals"', '"{count} meals"', now()),
+  ('order.cart_item_one', 'text', 'Cart bar count when there''s one meal', '"1 meal"', '"1 meal"', now()),
   ('order.cart_empty', 'text', 'Empty cart bar', '"Your cart is empty"', '"Your cart is empty"', now()),
   ('order.checkout', 'text', 'Checkout button', '"Review & check out"', '"Review & check out"', now()),
   ('order.subtotal', 'text', 'Subtotal label', '"Subtotal"', '"Subtotal"', now()),
@@ -562,6 +563,7 @@ insert into public.content_blocks (key, type, description, draft_value, publishe
   ('orders.empty', 'text', 'No orders', '"No orders yet."', '"No orders yet."', now()),
   ('orders.week_of', 'text', 'Week label (use {date})', '"Week of {date}"', '"Week of {date}"', now()),
   ('orders.items', 'text', 'Item count (use {count})', '"{count} meals"', '"{count} meals"', now()),
+  ('orders.item_one', 'text', 'Item count when there''s one meal', '"1 meal"', '"1 meal"', now()),
   ('orders.status_pending_payment', 'text', 'Status: pending payment', '"Awaiting payment"', '"Awaiting payment"', now()),
   ('orders.status_paid', 'text', 'Status: paid', '"Confirmed"', '"Confirmed"', now()),
   ('orders.status_invoiced', 'text', 'Status: invoiced', '"Invoiced"', '"Invoiced"', now()),
@@ -676,7 +678,11 @@ insert into public.email_templates (key, subject, preheader, body_rich) values
   ('order_cutoff_reminder', 'Order by {{cutoff}} for next week', 'Next week''s menu is ready.',
    '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Next week''s menu is live. Order by {{cutoff}} so we can cook for you."}]}]}'),
   ('school_invoice', 'Smart Cookie invoice for {{period}}', 'Your monthly invoice is ready.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Your invoice for {{period}} is ready: {{invoice_url}}"}]}]}');
+   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Your invoice for {{period}} is ready: {{invoice_url}}"}]}]}'),
+  ('subscription_autofill', 'We picked your meals for the week of {{week_of}}', 'Your plan''s meals are chosen. Allergies checked.',
+   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, so we chose your included meals from your favourites (then chef''s choice), skipping anything that clashes with your kids'' allergies. Order {{order_number}}:"}]},{"type":"paragraph","content":[{"type":"text","text":"{{meals}}"}]}]}'),
+  ('subscription_autofill_failed', 'We couldn''t pick meals for the week of {{week_of}}', 'Please get in touch.',
+   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, but we couldn''t safely choose meals for your plan this week (no delivery address, or no meal that fits everyone''s allergies). Reply to this email and we''ll sort it out."}]}]}');
 
 update public.site_settings set contact_email = 'hello@smartcookie.test', contact_phone = '(626) 555-0100',
   social_links = '{"instagram":"https://instagram.com/smartcookie"}';

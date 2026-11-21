@@ -13,7 +13,13 @@ import { formatDay } from "@/lib/time";
 
 import { Chip, fmt, type Copy } from "./kit";
 
-export type SchoolOption = { organization_id: string; name: string; classroom_id: string; classroom_name: string; grade: string | null };
+export type SchoolOption = {
+  organization_id: string;
+  name: string;
+  classroom_id: string;
+  classroom_name: string;
+  grade: string | null;
+};
 
 export type ChildFormValue = {
   id?: string;
@@ -74,7 +80,12 @@ export function ChildForm({
   const severityOf = (allergenId: string) => v.allergies.find((a) => a.allergenId === allergenId)?.severity;
 
   const toggleAllergy = (allergenId: string, on: boolean) =>
-    set("allergies", on ? [...v.allergies, { allergenId, severity: "allergy" }] : v.allergies.filter((a) => a.allergenId !== allergenId));
+    set(
+      "allergies",
+      on
+        ? [...v.allergies, { allergenId, severity: "allergy" }]
+        : v.allergies.filter((a) => a.allergenId !== allergenId),
+    );
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +146,12 @@ export function ChildForm({
         <p className="text-sm text-muted-foreground">{copy.allergies_help}</p>
         <div className="flex flex-wrap gap-2">
           {allergens.map((a) => (
-            <Chip key={a.id} tone="allergy" pressed={Boolean(severityOf(a.id))} onPressedChange={(on) => toggleAllergy(a.id, on)}>
+            <Chip
+              key={a.id}
+              tone="allergy"
+              pressed={Boolean(severityOf(a.id))}
+              onPressedChange={(on) => toggleAllergy(a.id, on)}
+            >
               {a.name}
             </Chip>
           ))}
@@ -145,7 +161,10 @@ export function ChildForm({
             {v.allergies.map((a) => {
               const name = allergens.find((x) => x.id === a.allergenId)?.name ?? "";
               return (
-                <li key={a.allergenId} className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-allergy/40 bg-paper p-2">
+                <li
+                  key={a.allergenId}
+                  className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-allergy/40 bg-paper p-2"
+                >
                   <span className="min-w-20 font-bold text-allergy">{name}</span>
                   <span className="sr-only">{copy.severity}</span>
                   {(["intolerance", "allergy", "severe"] as const).map((sev) => (
@@ -186,7 +205,9 @@ export function ChildForm({
               <Chip
                 key={b.name}
                 pressed={v.dietary.includes(b.name)}
-                onPressedChange={(on) => set("dietary", on ? [...v.dietary, b.name] : v.dietary.filter((d) => d !== b.name))}
+                onPressedChange={(on) =>
+                  set("dietary", on ? [...v.dietary, b.name] : v.dietary.filter((d) => d !== b.name))
+                }
               >
                 {b.name}
               </Chip>

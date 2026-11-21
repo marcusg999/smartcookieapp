@@ -86,7 +86,7 @@ describe("sonner style hash", () => {
     const { readFileSync } = await import("node:fs");
     const { createHash } = await import("node:crypto");
     const src = readFileSync("node_modules/sonner/dist/index.mjs", "utf8");
-    const call = src.slice(src.indexOf('__insertCSS("') + '__insertCSS('.length);
+    const call = src.slice(src.indexOf('__insertCSS("') + "__insertCSS(".length);
     const css = JSON.parse(call.slice(0, call.indexOf('");') + 1)) as string;
     const hash = `'sha256-${createHash("sha256").update(css).digest("base64")}'`;
     expect(SONNER_STYLE_HASHES).toContain(hash);

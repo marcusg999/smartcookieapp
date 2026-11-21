@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { checkZip, completeOnboarding, joinWaitlist, saveAddress, saveHousehold, setOrderingPreference } from "@/app/(family)/actions";
+import {
+  checkZip,
+  completeOnboarding,
+  joinWaitlist,
+  saveAddress,
+  saveHousehold,
+  setOrderingPreference,
+} from "@/app/(family)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,12 +120,18 @@ export function Onboarding({
         <p className="text-sm font-bold">{fmt(copy.step_of, { n: step, total: TOTAL })}</p>
         <div className="mt-2 grid grid-cols-4 gap-1.5" aria-hidden="true">
           {Array.from({ length: TOTAL }, (_, i) => (
-            <span key={i} className={cn("h-2.5 rounded-full border-2 border-ink transition-colors duration-300", i < step ? "bg-orange" : "bg-paper")} />
+            <span
+              key={i}
+              className={cn(
+                "h-2.5 rounded-full border-2 border-ink transition-colors duration-300",
+                i < step ? "bg-orange" : "bg-paper",
+              )}
+            />
           ))}
         </div>
       </div>
 
-      <div key={step} className="animate-in fade-in slide-in-from-right-6 duration-300 motion-reduce:animate-none">
+      <div key={step} className="animate-in duration-300 fade-in slide-in-from-right-6 motion-reduce:animate-none">
         {step === 1 ? (
           <section className="space-y-5">
             <h2 className="text-3xl font-black">{copy.household_title}</h2>
@@ -126,14 +139,28 @@ export function Onboarding({
               <Label htmlFor="hh-name" className="font-semibold">
                 {copy.household_name}
               </Label>
-              <Input id="hh-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-invalid={Boolean(errors.name)} />
+              <Input
+                id="hh-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={120}
+                aria-invalid={Boolean(errors.name)}
+              />
               {errors.name ? <p className="text-sm font-semibold text-destructive">{errors.name}</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="hh-phone" className="font-semibold">
                 {copy.household_phone}
               </Label>
-              <Input id="hh-phone" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={32} aria-invalid={Boolean(errors.phone)} />
+              <Input
+                id="hh-phone"
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                maxLength={32}
+                aria-invalid={Boolean(errors.phone)}
+              />
               {errors.phone ? <p className="text-sm font-semibold text-destructive">{errors.phone}</p> : null}
             </div>
             <Nav copy={copy} pending={pending} onNext={saveStep1} />
@@ -145,13 +172,24 @@ export function Onboarding({
             <h2 className="flex items-center gap-2 text-3xl font-black">
               <MapPin aria-hidden="true" className="size-7" /> {copy.address_title}
             </h2>
-            {hasAddress ? <p className="rounded-xl border-2 border-ink bg-orange-tint p-3 font-semibold">{copy.saved}</p> : null}
+            {hasAddress ? (
+              <p className="rounded-xl border-2 border-ink bg-orange-tint p-3 font-semibold">{copy.saved}</p>
+            ) : null}
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-1.5">
                 <Label htmlFor="zip-check" className="font-semibold">
                   {copy.address_zip}
                 </Label>
-                <Input id="zip-check" inputMode="numeric" maxLength={10} value={addr.zip} onChange={(e) => { setAddr({ ...addr, zip: e.target.value }); setZip(null); }} />
+                <Input
+                  id="zip-check"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={addr.zip}
+                  onChange={(e) => {
+                    setAddr({ ...addr, zip: e.target.value });
+                    setZip(null);
+                  }}
+                />
               </div>
               <Button variant="outline" onClick={check} disabled={pending || addr.zip.length < 5}>
                 {copy.zip_check}
@@ -161,7 +199,10 @@ export function Onboarding({
 
             {zip?.covered ? (
               <>
-                <p role="status" className="flex items-center gap-2 rounded-xl border-2 border-ink bg-orange p-3 font-bold">
+                <p
+                  role="status"
+                  className="flex items-center gap-2 rounded-xl border-2 border-ink bg-orange p-3 font-bold"
+                >
                   <Check aria-hidden="true" /> {fmt(copy.zip_ok, { zone: zip.zone ?? "", days: zip.days ?? "" })}
                 </p>
                 <AddressFields copy={copy} value={addr} onChange={setAddr} errors={errors} />
@@ -216,7 +257,14 @@ export function Onboarding({
           <section className="space-y-5">
             <h2 className="text-3xl font-black">{copy.kids_title}</h2>
             <p>{copy.kids_body}</p>
-            <ChildrenManager copy={kidsCopy} kids={kids} allergens={allergens} badges={badges} schools={schools} preferSchool={preferSchool} />
+            <ChildrenManager
+              copy={kidsCopy}
+              kids={kids}
+              allergens={allergens}
+              badges={badges}
+              schools={schools}
+              preferSchool={preferSchool}
+            />
             <Nav copy={copy} pending={pending} onBack={() => setStep(2)} onNext={next} />
           </section>
         ) : null}
@@ -227,11 +275,24 @@ export function Onboarding({
             <fieldset className="space-y-3">
               <legend className="sr-only">{copy.plan_title}</legend>
               {(["a_la_carte", "subscription"] as const).map((p) => (
-                <label key={p} className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-ink bg-paper p-4 transition-transform has-checked:-rotate-[0.5deg] has-checked:bg-orange has-checked:shadow-ink">
-                  <input type="radio" name="pref" checked={preference === p} onChange={() => setPreference(p)} className="mt-1 size-5 accent-[var(--ink)]" />
+                <label
+                  key={p}
+                  className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-ink bg-paper p-4 transition-transform has-checked:-rotate-[0.5deg] has-checked:bg-orange has-checked:shadow-ink"
+                >
+                  <input
+                    type="radio"
+                    name="pref"
+                    checked={preference === p}
+                    onChange={() => setPreference(p)}
+                    className="mt-1 size-5 accent-[var(--ink)]"
+                  />
                   <span>
-                    <span className="block text-lg font-black">{p === "a_la_carte" ? copy.plan_a_la_carte : copy.plan_subscribe}</span>
-                    <span className="block text-sm">{p === "a_la_carte" ? copy.plan_a_la_carte_body : copy.plan_subscribe_body}</span>
+                    <span className="block text-lg font-black">
+                      {p === "a_la_carte" ? copy.plan_a_la_carte : copy.plan_subscribe}
+                    </span>
+                    <span className="block text-sm">
+                      {p === "a_la_carte" ? copy.plan_a_la_carte_body : copy.plan_subscribe_body}
+                    </span>
                   </span>
                 </label>
               ))}
@@ -241,7 +302,13 @@ export function Onboarding({
                 {plans.map((p) => (
                   <li key={p.id}>
                     <label className="flex h-full cursor-pointer flex-col rounded-2xl border-2 border-ink bg-paper p-4 has-checked:bg-orange-tint has-checked:shadow-ink">
-                      <input type="radio" name="plan" className="sr-only" checked={planId === p.id} onChange={() => setPlanId(p.id)} />
+                      <input
+                        type="radio"
+                        name="plan"
+                        className="sr-only"
+                        checked={planId === p.id}
+                        onChange={() => setPlanId(p.id)}
+                      />
                       <span className="font-black">{p.name}</span>
                       <span className="text-2xl font-black">
                         {p.priceLabel} <span className="text-xs font-semibold">{p.intervalLabel}</span>
@@ -272,7 +339,10 @@ export function Onboarding({
       </div>
 
       <p className="mt-8 text-center">
-        <Link href="/account?skip=1" className="font-semibold underline decoration-orange decoration-[3px] underline-offset-4">
+        <Link
+          href="/account?skip=1"
+          className="font-semibold underline decoration-orange decoration-[3px] underline-offset-4"
+        >
           {copy.skip}
         </Link>
       </p>
@@ -280,7 +350,17 @@ export function Onboarding({
   );
 }
 
-function Nav({ copy, pending, onBack, onNext }: { copy: Copy; pending: boolean; onBack?: () => void; onNext: () => void }) {
+function Nav({
+  copy,
+  pending,
+  onBack,
+  onNext,
+}: {
+  copy: Copy;
+  pending: boolean;
+  onBack?: () => void;
+  onNext: () => void;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 pt-2">
       {onBack ? (

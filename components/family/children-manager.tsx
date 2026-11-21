@@ -88,7 +88,10 @@ export function ChildrenManager({
                   {k.dietary_preferences.length ? (
                     <ul className="flex flex-wrap gap-1.5">
                       {k.dietary_preferences.map((d) => (
-                        <li key={d} className="rounded-full border-2 border-ink bg-orange-tint px-2 py-0.5 text-xs font-semibold">
+                        <li
+                          key={d}
+                          className="rounded-full border-2 border-ink bg-orange-tint px-2 py-0.5 text-xs font-semibold"
+                        >
                           {d}
                         </li>
                       ))}

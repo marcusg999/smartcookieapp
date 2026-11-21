@@ -121,7 +121,9 @@ export default async function AccountSecurityPage() {
               <li key={s.id} className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:justify-between">
                 <span>
                   {describeAgent(s.user_agent, c.text("security.unknown_device"))}
-                  {s.is_current ? <span className="font-bold text-ink"> · {c.text("security.this_device")}</span> : null}
+                  {s.is_current ? (
+                    <span className="font-bold text-ink"> · {c.text("security.this_device")}</span>
+                  ) : null}
                 </span>
                 <span className="text-muted-foreground">
                   {c.text("security.active", { date: new Date(s.updated_at ?? s.created_at).toLocaleString("en-US") })}

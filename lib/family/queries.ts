@@ -120,7 +120,11 @@ export const getChildren = cache(async (householdId: string): Promise<Child[]> =
     .is("archived_at", null)
     .order("created_at");
   type Row = Omit<Child, "allergies" | "overrides"> & {
-    child_allergens: { severity: Severity; allergen_id: string; allergens: { name: string; sort_order: number } | null }[];
+    child_allergens: {
+      severity: Severity;
+      allergen_id: string;
+      allergens: { name: string; sort_order: number } | null;
+    }[];
     allergy_overrides: { menu_item_id: string; revoked_at: string | null }[];
   };
   return ((data ?? []) as unknown as Row[]).map(({ child_allergens, allergy_overrides, ...c }) => ({
@@ -135,7 +139,10 @@ export const getChildren = cache(async (householdId: string): Promise<Child[]> =
 
 export const getAllergens = cache(async () => {
   const supabase = await createClient();
-  const { data } = await supabase.from("allergens").select("id, name, slug, is_top9, icon, sort_order").order("sort_order");
+  const { data } = await supabase
+    .from("allergens")
+    .select("id, name, slug, is_top9, icon, sort_order")
+    .order("sort_order");
   return (data ?? []) as { id: string; name: string; slug: string; is_top9: boolean; icon: string | null }[];
 });
 
@@ -182,7 +189,9 @@ export const getSubscription = cache(async (householdId: string): Promise<Subscr
   const supabase = await createClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select(`id, status, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans ( ${PLAN_COLUMNS} )`)
+    .select(
+      `id, status, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans ( ${PLAN_COLUMNS} )`,
+    )
     .eq("household_id", householdId)
     .in("status", ["active", "trialing", "past_due", "paused"])
     .order("created_at", { ascending: false })
@@ -202,7 +211,13 @@ export async function getAllowance(subscriptionId: string, weekId: string) {
     .eq("subscription_id", subscriptionId)
     .eq("menu_week_id", weekId)
     .maybeSingle();
-  return data as { skipped: boolean; meals_allowed: number; meals_used: number; snacks_allowed: number; snacks_used: number } | null;
+  return data as {
+    skipped: boolean;
+    meals_allowed: number;
+    meals_used: number;
+    snacks_allowed: number;
+    snacks_used: number;
+  } | null;
 }
 
 /** Plan in the shape priceCart understands; null when nothing is included right now. */
@@ -244,12 +259,20 @@ export const getFavorites = cache(async (householdId: string) => {
     .select("id, child_id, menu_item_id, menu_items ( name, menu_categories ( name ) )")
     .eq("household_id", householdId)
     .order("created_at");
-  return ((data ?? []) as unknown as {
-    id: string;
-    child_id: string | null;
-    menu_item_id: string;
-    menu_items: { name: string; menu_categories: { name: string } | null } | null;
-  }[]).map((f) => ({ id: f.id, childId: f.child_id, menuItemId: f.menu_item_id, name: f.menu_items?.name ?? "", category: f.menu_items?.menu_categories?.name ?? null }));
+  return (
+    (data ?? []) as unknown as {
+      id: string;
+      child_id: string | null;
+      menu_item_id: string;
+      menu_items: { name: string; menu_categories: { name: string } | null } | null;
+    }[]
+  ).map((f) => ({
+    id: f.id,
+    childId: f.child_id,
+    menuItemId: f.menu_item_id,
+    name: f.menu_items?.name ?? "",
+    category: f.menu_items?.menu_categories?.name ?? null,
+  }));
 });
 
 export const getSavedOrders = cache(async (householdId: string) => {
@@ -259,7 +282,11 @@ export const getSavedOrders = cache(async (householdId: string) => {
     .select("id, name, payload, updated_at")
     .eq("household_id", householdId)
     .order("updated_at", { ascending: false });
-  return (data ?? []) as { id: string; name: string; payload: { child_id: string; menu_item_id: string; quantity: number; weekday: number }[] }[];
+  return (data ?? []) as {
+    id: string;
+    name: string;
+    payload: { child_id: string; menu_item_id: string; quantity: number; weekday: number }[];
+  }[];
 });
 
 export type OrderSummary = {
@@ -281,7 +308,9 @@ export const getOrders = cache(async (householdId: string): Promise<OrderSummary
   const supabase = await createClient();
   const { data } = await supabase
     .from("orders")
-    .select("id, order_number, status, source, fulfillment, menu_week_id, total_cents, currency, placed_at, menu_weeks ( week_start ), order_items ( quantity )")
+    .select(
+      "id, order_number, status, source, fulfillment, menu_week_id, total_cents, currency, placed_at, menu_weeks ( week_start ), order_items ( quantity )",
+    )
     .eq("household_id", householdId)
     .neq("status", "draft")
     .order("created_at", { ascending: false })
@@ -407,7 +436,9 @@ export async function getLastOrderLines(householdId: string, beforeWeekStart: st
       menu_items: { is_snack: boolean; menu_categories: { name: string } | null } | null;
     }[];
   };
-  const rows = ((data ?? []) as unknown as Row[]).sort((a, b) => b.menu_weeks.week_start.localeCompare(a.menu_weeks.week_start));
+  const rows = ((data ?? []) as unknown as Row[]).sort((a, b) =>
+    b.menu_weeks.week_start.localeCompare(a.menu_weeks.week_start),
+  );
   const latest = rows[0];
   if (!latest) return null;
   const weekStart = latest.menu_weeks.week_start;
@@ -454,7 +485,12 @@ export const getPartnerSchools = cache(async () => {
 });
 
 /** Plan allowance already used this week by the household's other live orders. */
-export async function getUsedElsewhere(householdId: string, weekId: string, plan: PlanAllowance | null, excludeOrderId?: string | null) {
+export async function getUsedElsewhere(
+  householdId: string,
+  weekId: string,
+  plan: PlanAllowance | null,
+  excludeOrderId?: string | null,
+) {
   const used = { meals: {} as Record<string, number>, snacks: {} as Record<string, number> };
   if (!plan) return used;
   const supabase = await createClient();
@@ -467,7 +503,11 @@ export async function getUsedElsewhere(householdId: string, weekId: string, plan
     .in("orders.status", ["pending_payment", "paid", "invoiced", "fulfilled"]);
   if (excludeOrderId) q = q.neq("orders.id", excludeOrderId);
   const { data } = await q;
-  for (const row of (data ?? []) as unknown as { child_id: string | null; quantity: number; menu_items: { is_snack: boolean } | null }[]) {
+  for (const row of (data ?? []) as unknown as {
+    child_id: string | null;
+    quantity: number;
+    menu_items: { is_snack: boolean } | null;
+  }[]) {
     const key = plan.unit === "per_child" ? (row.child_id ?? "household") : "household";
     const bucket = row.menu_items?.is_snack ? used.snacks : used.meals;
     bucket[key] = (bucket[key] ?? 0) + row.quantity;

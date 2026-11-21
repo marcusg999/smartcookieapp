@@ -66,12 +66,19 @@ async function cleanLines(householdId: string, week: PublicWeek, lines: CartLine
 export async function saveHousehold(input: unknown): Promise<ActionResult> {
   return familyAction({ schema: householdSchema, input }, async (data, { supabase, householdId, user }) => {
     check(await supabase.from("households").update({ name: data.name }).eq("id", householdId));
-    check(await supabase.from("profiles").update({ phone: data.phone || null }).eq("id", user.id));
+    check(
+      await supabase
+        .from("profiles")
+        .update({ phone: data.phone || null })
+        .eq("id", user.id),
+    );
     refresh("/account", "/welcome");
   });
 }
 
-export async function checkZip(input: unknown): Promise<ActionResult<{ covered: boolean; zone?: string; days?: string }>> {
+export async function checkZip(
+  input: unknown,
+): Promise<ActionResult<{ covered: boolean; zone?: string; days?: string }>> {
   return familyAction({ schema: z.object({ zip: zipSchema }), input }, async ({ zip }) => {
     const zone = await getZoneForZip(zip);
     if (!zone) return { ok: true, data: { covered: false } };
@@ -93,11 +100,30 @@ export async function saveAddress(input: unknown): Promise<ActionResult<{ id: st
       delivery_notes: data.deliveryNotes || null,
     };
     if (data.makeDefault) {
-      check(await supabase.from("addresses").update({ is_default: false }).eq("household_id", householdId).eq("is_default", true));
+      check(
+        await supabase
+          .from("addresses")
+          .update({ is_default: false })
+          .eq("household_id", householdId)
+          .eq("is_default", true),
+      );
     }
     const saved = data.id
-      ? check(await supabase.from("addresses").update({ ...row, is_default: data.makeDefault }).eq("id", data.id).select("id").single())
-      : check(await supabase.from("addresses").insert({ ...row, is_default: data.makeDefault }).select("id").single());
+      ? check(
+          await supabase
+            .from("addresses")
+            .update({ ...row, is_default: data.makeDefault })
+            .eq("id", data.id)
+            .select("id")
+            .single(),
+        )
+      : check(
+          await supabase
+            .from("addresses")
+            .insert({ ...row, is_default: data.makeDefault })
+            .select("id")
+            .single(),
+        );
     if (data.makeDefault) {
       check(
         await supabase
@@ -115,9 +141,20 @@ export async function setDefaultAddress(input: unknown): Promise<ActionResult> {
   return familyAction({ schema: z.object({ id: uuid }), input }, async ({ id }, { supabase, householdId }) => {
     const addr = check(await supabase.from("addresses").select("id, zip").eq("id", id).single());
     const zone = await getZoneForZip(addr.zip as string);
-    check(await supabase.from("addresses").update({ is_default: false }).eq("household_id", householdId).eq("is_default", true));
+    check(
+      await supabase
+        .from("addresses")
+        .update({ is_default: false })
+        .eq("household_id", householdId)
+        .eq("is_default", true),
+    );
     check(await supabase.from("addresses").update({ is_default: true }).eq("id", id));
-    check(await supabase.from("households").update({ default_address_id: id, default_zone_id: zone?.id ?? null }).eq("id", householdId));
+    check(
+      await supabase
+        .from("households")
+        .update({ default_address_id: id, default_zone_id: zone?.id ?? null })
+        .eq("id", householdId),
+    );
     refresh("/account/addresses", "/checkout");
   });
 }
@@ -130,21 +167,32 @@ export async function deleteAddress(input: unknown): Promise<ActionResult> {
 }
 
 export async function joinWaitlist(input: unknown): Promise<ActionResult> {
-  return familyAction({ schema: z.object({ zip: zipSchema }), input }, async ({ zip }, { supabase, householdId, user }) => {
-    if (!user.email) return fail("validation", "We need an email address to let you know.");
-    const { error } = await supabase.from("zone_waitlist").insert({ household_id: householdId, email: user.email, zip });
-    if (error && error.code !== "23505") throw error; // already on the list is fine
-  });
+  return familyAction(
+    { schema: z.object({ zip: zipSchema }), input },
+    async ({ zip }, { supabase, householdId, user }) => {
+      if (!user.email) return fail("validation", "We need an email address to let you know.");
+      const { error } = await supabase
+        .from("zone_waitlist")
+        .insert({ household_id: householdId, email: user.email, zip });
+      if (error && error.code !== "23505") throw error; // already on the list is fine
+    },
+  );
 }
 
 export async function setOrderingPreference(input: unknown): Promise<ActionResult> {
   return familyAction(
-    { schema: z.object({ preference: z.enum(["a_la_carte", "subscription"]), planId: uuid.optional().nullable() }), input },
+    {
+      schema: z.object({ preference: z.enum(["a_la_carte", "subscription"]), planId: uuid.optional().nullable() }),
+      input,
+    },
     async ({ preference, planId }, { supabase, householdId }) => {
       check(
         await supabase
           .from("households")
-          .update({ ordering_preference: preference, preferred_plan_id: preference === "subscription" ? (planId ?? null) : null })
+          .update({
+            ordering_preference: preference,
+            preferred_plan_id: preference === "subscription" ? (planId ?? null) : null,
+          })
           .eq("id", householdId),
       );
     },
@@ -214,7 +262,10 @@ export async function saveCart(input: unknown): Promise<ActionResult<{ lines: Ca
       check(
         await supabase
           .from("carts")
-          .upsert({ household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) }, { onConflict: "household_id,menu_week_id" }),
+          .upsert(
+            { household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) },
+            { onConflict: "household_id,menu_week_id" },
+          ),
       );
       return { ok: true, data: { lines: kept, blocked } };
     },
@@ -238,7 +289,11 @@ export async function toggleFavorite(input: unknown): Promise<ActionResult<{ fav
       if (existing) {
         check(await supabase.from("favorites").delete().eq("id", existing.id));
       } else {
-        check(await supabase.from("favorites").insert({ household_id: householdId, menu_item_id: menuItemId, child_id: childId }));
+        check(
+          await supabase
+            .from("favorites")
+            .insert({ household_id: householdId, menu_item_id: menuItemId, child_id: childId }),
+        );
       }
       refresh("/favorites");
       return { ok: true, data: { favorite: !existing } };
@@ -260,7 +315,14 @@ export async function repeatLastWeek(
     const kids = new Map(children.map((c) => [c.id, c]));
     const menu = week.meals
       .filter((m) => m.available_for !== "schools")
-      .map((m) => ({ id: m.id, name: m.name, category: m.category, isSnack: m.is_snack, contains: m.contains, mayContain: m.may_contain }));
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        category: m.category,
+        isSnack: m.is_snack,
+        contains: m.contains,
+        mayContain: m.may_contain,
+      }));
     const plan = planRepeat({
       lastLines: last.lines.filter((l) => kids.has(l.childId)),
       lastWeekStart: last.weekStart,
@@ -273,7 +335,10 @@ export async function repeatLastWeek(
     check(
       await supabase
         .from("carts")
-        .upsert({ household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) }, { onConflict: "household_id,menu_week_id" }),
+        .upsert(
+          { household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) },
+          { onConflict: "household_id,menu_week_id" },
+        ),
     );
     return { ok: true, data: { lines: kept, swaps: plan.swaps, dropped: plan.dropped } };
   });
@@ -286,7 +351,9 @@ export async function fillWithFavorites(input: unknown): Promise<ActionResult<{ 
       const week = await openWeek(weekId);
       if (!week) return fail("validation", "Ordering for this week is closed.");
       const [children, favorites] = await Promise.all([getChildren(householdId), getFavorites(householdId)]);
-      const onMenu = new Map(week.meals.filter((m) => m.available_for !== "schools" && !m.is_snack).map((m) => [m.id, m]));
+      const onMenu = new Map(
+        week.meals.filter((m) => m.available_for !== "schools" && !m.is_snack).map((m) => [m.id, m]),
+      );
       const days = [...week.delivery_dates].sort();
       const next = [...lines];
       let added = 0;
@@ -295,11 +362,15 @@ export async function fillWithFavorites(input: unknown): Promise<ActionResult<{ 
           .filter((f) => (f.childId === child.id || f.childId === null) && onMenu.has(f.menuItemId))
           .sort((a, b) => Number(a.childId === null) - Number(b.childId === null))
           .map((f) => onMenu.get(f.menuItemId)!)
-          .filter((m) => blockingAllergens(child, { id: m.id, contains: m.contains, mayContain: m.may_contain }).length === 0);
+          .filter(
+            (m) => blockingAllergens(child, { id: m.id, contains: m.contains, mayContain: m.may_contain }).length === 0,
+          );
         const unique = [...new Map(picks.map((m) => [m.id, m])).values()];
         if (!unique.length) continue;
         days.forEach((day, i) => {
-          const hasMain = next.some((l) => l.childId === child.id && l.deliveryDate === day && onMenu.has(l.menuItemId));
+          const hasMain = next.some(
+            (l) => l.childId === child.id && l.deliveryDate === day && onMenu.has(l.menuItemId),
+          );
           if (hasMain) return;
           next.push({ childId: child.id, menuItemId: unique[i % unique.length]!.id, deliveryDate: day, quantity: 1 });
           added++;
@@ -309,7 +380,10 @@ export async function fillWithFavorites(input: unknown): Promise<ActionResult<{ 
       check(
         await supabase
           .from("carts")
-          .upsert({ household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) }, { onConflict: "household_id,menu_week_id" }),
+          .upsert(
+            { household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) },
+            { onConflict: "household_id,menu_week_id" },
+          ),
       );
       return { ok: true, data: { lines: kept, added } };
     },
@@ -320,7 +394,10 @@ export async function fillWithFavorites(input: unknown): Promise<ActionResult<{ 
 
 export async function saveNamedOrder(input: unknown): Promise<ActionResult<{ id: string }>> {
   return familyAction(
-    { schema: z.object({ name: z.string().trim().min(1, "Give it a name.").max(80), lines: cartLinesSchema.min(1) }), input },
+    {
+      schema: z.object({ name: z.string().trim().min(1, "Give it a name.").max(80), lines: cartLinesSchema.min(1) }),
+      input,
+    },
     async ({ name, lines }, { supabase, householdId }) => {
       const payload = lines.map((l) => ({
         child_id: l.childId,
@@ -328,7 +405,9 @@ export async function saveNamedOrder(input: unknown): Promise<ActionResult<{ id:
         quantity: l.quantity,
         weekday: new Date(`${l.deliveryDate}T12:00:00Z`).getUTCDay(),
       }));
-      const saved = check(await supabase.from("saved_orders").insert({ household_id: householdId, name, payload }).select("id").single());
+      const saved = check(
+        await supabase.from("saved_orders").insert({ household_id: householdId, name, payload }).select("id").single(),
+      );
       refresh("/order");
       return { ok: true, data: { id: saved.id as string } };
     },
@@ -346,13 +425,18 @@ export async function applySavedOrder(input: unknown): Promise<ActionResult<{ li
       const payload = saved.payload as { child_id: string; menu_item_id: string; quantity: number; weekday: number }[];
       const mapped: CartLine[] = payload.flatMap((p) => {
         const day = byWeekday.get(p.weekday);
-        return day ? [{ childId: p.child_id, menuItemId: p.menu_item_id, deliveryDate: day, quantity: p.quantity }] : [];
+        return day
+          ? [{ childId: p.child_id, menuItemId: p.menu_item_id, deliveryDate: day, quantity: p.quantity }]
+          : [];
       });
       const { kept } = await cleanLines(householdId, week, [...lines, ...mapped]);
       check(
         await supabase
           .from("carts")
-          .upsert({ household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) }, { onConflict: "household_id,menu_week_id" }),
+          .upsert(
+            { household_id: householdId, menu_week_id: weekId, lines: kept.map(toRow) },
+            { onConflict: "household_id,menu_week_id" },
+          ),
       );
       return { ok: true, data: { lines: kept, skipped: payload.length - mapped.length } };
     },
@@ -371,7 +455,15 @@ export async function deleteSavedOrder(input: unknown): Promise<ActionResult> {
 export async function previewDiscount(input: unknown): Promise<ActionResult<{ discountCents: number }>> {
   return familyAction(
     {
-      schema: z.object({ code: z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/), subtotalCents: z.number().int().min(0) }),
+      schema: z.object({
+        code: z
+          .string()
+          .trim()
+          .min(1)
+          .max(40)
+          .regex(/^[A-Za-z0-9_-]+$/),
+        subtotalCents: z.number().int().min(0),
+      }),
       input,
       limiter: "codeCheck",
     },
@@ -392,58 +484,69 @@ export async function previewDiscount(input: unknown): Promise<ActionResult<{ di
 export async function placeOrder(
   input: unknown,
 ): Promise<ActionResult<{ orderId: string; orderNumber: string; totalCents: number; status: string }>> {
-  return familyAction({ schema: placeOrderSchema, input, limiter: "checkout" }, async (data, { supabase, householdId }) => {
-    const { data: cart } = await supabase
-      .from("carts")
-      .select("lines, replaces_order_id")
-      .eq("household_id", householdId)
-      .eq("menu_week_id", data.weekId)
-      .maybeSingle();
-    const lines = (cart?.lines ?? []) as { child_id: string }[];
-    if (lines.length === 0) return fail("validation", "Your cart is empty.");
-    const kidsInCart = [...new Set(lines.map((l) => l.child_id))];
-    if (kidsInCart.some((id) => !data.confirmedChildIds.includes(id))) {
-      return fail("validation", "Please confirm each child's allergies.");
-    }
+  return familyAction(
+    { schema: placeOrderSchema, input, limiter: "checkout" },
+    async (data, { supabase, householdId }) => {
+      const { data: cart } = await supabase
+        .from("carts")
+        .select("lines, replaces_order_id")
+        .eq("household_id", householdId)
+        .eq("menu_week_id", data.weekId)
+        .maybeSingle();
+      const lines = (cart?.lines ?? []) as { child_id: string }[];
+      if (lines.length === 0) return fail("validation", "Your cart is empty.");
+      const kidsInCart = [...new Set(lines.map((l) => l.child_id))];
+      if (kidsInCart.some((id) => !data.confirmedChildIds.includes(id))) {
+        return fail("validation", "Please confirm each child's allergies.");
+      }
 
-    const { data: orderId, error } = await supabase.rpc("place_family_order", {
-      p_household: householdId,
-      p_menu_week: data.weekId,
-      p_items: cart!.lines,
-      p_fulfillment: data.fulfillment,
-      p_address: data.fulfillment === "delivery" ? (data.addressId ?? null) : null,
-      p_discount_code: data.discountCode || null,
-      p_allergies_confirmed: true,
-      p_notes: data.notes || null,
-      p_replace_order: (cart!.replaces_order_id as string | null) ?? null,
-    });
-    if (error) throw error;
-    const order = check(
-      await supabase.from("orders").select("id, order_number, total_cents, status").eq("id", orderId as string).single(),
-    );
-    check(await supabase.from("carts").delete().eq("household_id", householdId).eq("menu_week_id", data.weekId));
-    refresh("/orders", "/account", "/order");
-    return {
-      ok: true,
-      data: {
-        orderId: order.id as string,
-        orderNumber: order.order_number as string,
-        totalCents: order.total_cents as number,
-        status: order.status as string,
-      },
-    };
-  });
+      const { data: orderId, error } = await supabase.rpc("place_family_order", {
+        p_household: householdId,
+        p_menu_week: data.weekId,
+        p_items: cart!.lines,
+        p_fulfillment: data.fulfillment,
+        p_address: data.fulfillment === "delivery" ? (data.addressId ?? null) : null,
+        p_discount_code: data.discountCode || null,
+        p_allergies_confirmed: true,
+        p_notes: data.notes || null,
+        p_replace_order: (cart!.replaces_order_id as string | null) ?? null,
+      });
+      if (error) throw error;
+      const order = check(
+        await supabase
+          .from("orders")
+          .select("id, order_number, total_cents, status")
+          .eq("id", orderId as string)
+          .single(),
+      );
+      check(await supabase.from("carts").delete().eq("household_id", householdId).eq("menu_week_id", data.weekId));
+      refresh("/orders", "/account", "/order");
+      return {
+        ok: true,
+        data: {
+          orderId: order.id as string,
+          orderNumber: order.order_number as string,
+          totalCents: order.total_cents as number,
+          status: order.status as string,
+        },
+      };
+    },
+  );
 }
 
 export async function payOrder(input: unknown): Promise<ActionResult> {
-  return familyAction({ schema: z.object({ orderId: uuid }), input, limiter: "checkout" }, async ({ orderId }, { supabase }) => {
-    // RLS: the parent can only read their own household's orders.
-    const { data: order } = await supabase.from("orders").select("id, status").eq("id", orderId).maybeSingle();
-    if (!order || order.status !== "pending_payment") return fail("validation", "This order isn't waiting for payment.");
-    const result = await getPaymentProvider().payOrder(orderId);
-    if (!result.ok) return fail("validation", result.message);
-    refresh("/orders", `/orders/${orderId}`, "/account");
-  });
+  return familyAction(
+    { schema: z.object({ orderId: uuid }), input, limiter: "checkout" },
+    async ({ orderId }, { supabase }) => {
+      // RLS: the parent can only read their own household's orders.
+      const { data: order } = await supabase.from("orders").select("id, status").eq("id", orderId).maybeSingle();
+      if (!order || order.status !== "pending_payment")
+        return fail("validation", "This order isn't waiting for payment.");
+      const result = await getPaymentProvider().payOrder(orderId);
+      if (!result.ok) return fail("validation", result.message);
+      refresh("/orders", `/orders/${orderId}`, "/account");
+    },
+  );
 }
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
@@ -458,50 +561,82 @@ export async function cancelOrder(input: unknown): Promise<ActionResult> {
 
 /** Load an order back into the cart for changes; checkout re-prices it in place. */
 export async function modifyOrder(input: unknown): Promise<ActionResult<{ weekId: string }>> {
-  return familyAction({ schema: z.object({ orderId: uuid }), input }, async ({ orderId }, { supabase, householdId }) => {
-    const order = check(
-      await supabase
-        .from("orders")
-        .select("id, status, menu_week_id, order_items ( child_id, menu_item_id, delivery_date, quantity )")
-        .eq("id", orderId)
-        .single(),
-    );
-    const week = await openWeek(order.menu_week_id as string);
-    if (!week || !["pending_payment", "paid"].includes(order.status as string)) {
-      return fail("validation", "This order can't be changed any more.");
-    }
-    const items = (order.order_items as { child_id: string | null; menu_item_id: string | null; delivery_date: string | null; quantity: number }[])
-      .filter((i) => i.child_id && i.menu_item_id && i.delivery_date)
-      .map((i) => ({ childId: i.child_id!, menuItemId: i.menu_item_id!, deliveryDate: i.delivery_date!, quantity: i.quantity }));
-    const lines = normalizeLines(items);
-    check(
-      await supabase.from("carts").upsert(
-        { household_id: householdId, menu_week_id: week.id, lines: lines.map(toRow), replaces_order_id: orderId },
-        { onConflict: "household_id,menu_week_id" },
-      ),
-    );
-    return { ok: true, data: { weekId: week.id } };
-  });
+  return familyAction(
+    { schema: z.object({ orderId: uuid }), input },
+    async ({ orderId }, { supabase, householdId }) => {
+      const order = check(
+        await supabase
+          .from("orders")
+          .select("id, status, menu_week_id, order_items ( child_id, menu_item_id, delivery_date, quantity )")
+          .eq("id", orderId)
+          .single(),
+      );
+      const week = await openWeek(order.menu_week_id as string);
+      if (!week || !["pending_payment", "paid"].includes(order.status as string)) {
+        return fail("validation", "This order can't be changed any more.");
+      }
+      const items = (
+        order.order_items as {
+          child_id: string | null;
+          menu_item_id: string | null;
+          delivery_date: string | null;
+          quantity: number;
+        }[]
+      )
+        .filter((i) => i.child_id && i.menu_item_id && i.delivery_date)
+        .map((i) => ({
+          childId: i.child_id!,
+          menuItemId: i.menu_item_id!,
+          deliveryDate: i.delivery_date!,
+          quantity: i.quantity,
+        }));
+      const lines = normalizeLines(items);
+      check(
+        await supabase
+          .from("carts")
+          .upsert(
+            { household_id: householdId, menu_week_id: week.id, lines: lines.map(toRow), replaces_order_id: orderId },
+            { onConflict: "household_id,menu_week_id" },
+          ),
+      );
+      return { ok: true, data: { weekId: week.id } };
+    },
+  );
 }
 
 // ─── Subscription (Stripe connects in Phase 6) ───────────────────────────────
 
 export async function choosePlan(input: unknown): Promise<ActionResult> {
-  return familyAction({ schema: z.object({ planId: uuid }), input, limiter: "checkout" }, async ({ planId }, { supabase, householdId }) => {
-    const { data: subId, error } = await supabase.rpc("create_pending_subscription", { p_household: householdId, p_plan: planId });
-    if (error) throw error;
-    const result = await getPaymentProvider().startSubscription(subId as string);
-    if (!result.ok) return fail("validation", result.message);
-    check(await supabase.from("households").update({ ordering_preference: "subscription", preferred_plan_id: planId }).eq("id", householdId));
-    refresh("/subscription", "/order", "/account");
-  });
+  return familyAction(
+    { schema: z.object({ planId: uuid }), input, limiter: "checkout" },
+    async ({ planId }, { supabase, householdId }) => {
+      const { data: subId, error } = await supabase.rpc("create_pending_subscription", {
+        p_household: householdId,
+        p_plan: planId,
+      });
+      if (error) throw error;
+      const result = await getPaymentProvider().startSubscription(subId as string);
+      if (!result.ok) return fail("validation", result.message);
+      check(
+        await supabase
+          .from("households")
+          .update({ ordering_preference: "subscription", preferred_plan_id: planId })
+          .eq("id", householdId),
+      );
+      refresh("/subscription", "/order", "/account");
+    },
+  );
 }
 
 export async function setWeekSkip(input: unknown): Promise<ActionResult> {
   return familyAction(
     { schema: z.object({ subscriptionId: uuid, weekId: uuid, skip: z.boolean() }), input },
     async ({ subscriptionId, weekId, skip }, { supabase }) => {
-      const { error } = await supabase.rpc("set_subscription_week_skip", { p_subscription: subscriptionId, p_week: weekId, p_skip: skip });
+      const { error } = await supabase.rpc("set_subscription_week_skip", {
+        p_subscription: subscriptionId,
+        p_week: weekId,
+        p_skip: skip,
+      });
       if (error) throw error;
       refresh("/subscription", "/order", "/account");
     },
@@ -514,7 +649,10 @@ export async function changeSubscription(input: unknown): Promise<ActionResult> 
       schema: z.object({
         subscriptionId: uuid,
         action: z.enum(["pause", "resume", "cancel", "reactivate"]),
-        until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        until: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
       }),
       input,
     },

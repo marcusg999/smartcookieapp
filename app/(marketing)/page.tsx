@@ -52,7 +52,9 @@ export default async function HomePage() {
     ...(settings?.contact_email ? { email: settings.contact_email } : {}),
     ...(settings?.contact_phone ? { telephone: settings.contact_phone } : {}),
     ...(zones.length ? { areaServed: zones.map((name) => ({ "@type": "Place", name })) } : {}),
-    sameAs: Object.values(settings?.social_links ?? {}).filter((u) => typeof u === "string" && u.startsWith("https://")),
+    sameAs: Object.values(settings?.social_links ?? {}).filter(
+      (u) => typeof u === "string" && u.startsWith("https://"),
+    ),
   }).replace(/</g, "\\u003c");
   const marquee = c
     .text("home.marquee")
@@ -114,7 +116,10 @@ export default async function HomePage() {
       {marquee.length ? (
         <div className="marquee relative -rotate-1 overflow-hidden border-y-2 border-ink bg-orange py-3 shadow-ink">
           <p className="sr-only">{c.text("home.marquee")}</p>
-          <div className="marquee-track flex w-max gap-8 pr-8 text-lg font-black whitespace-nowrap uppercase" aria-hidden="true">
+          <div
+            className="marquee-track flex w-max gap-8 pr-8 text-lg font-black whitespace-nowrap uppercase"
+            aria-hidden="true"
+          >
             {[...marquee, ...marquee].map((item, i) => (
               <span key={i} className="flex items-center gap-8">
                 {item} <Sparkles className="size-5" />
@@ -222,7 +227,10 @@ export default async function HomePage() {
             <p className="col-span-12 text-lg md:col-span-4 md:col-start-9 md:pb-2">{c.text("home.plans.subtitle")}</p>
           </div>
           <ul className="mt-12 grid gap-6 md:grid-cols-4">
-            <li style={{ "--tilt": "-1.5deg" } as React.CSSProperties} className="reveal-up flex flex-col rounded-2xl border-2 border-dashed border-ink bg-paper p-6">
+            <li
+              style={{ "--tilt": "-1.5deg" } as React.CSSProperties}
+              className="reveal-up flex flex-col rounded-2xl border-2 border-dashed border-ink bg-paper p-6"
+            >
               <h3 className="text-2xl font-black">{c.text("home.plans.a_la_carte_title")}</h3>
               <p className="mt-3 flex-1 leading-relaxed">{c.text("home.plans.a_la_carte_body")}</p>
             </li>
@@ -262,7 +270,10 @@ export default async function HomePage() {
           <h2 id="love-heading" className="mx-auto max-w-6xl px-4 text-5xl leading-none font-black md:text-7xl">
             {c.text("home.testimonials.title")}
           </h2>
-          <ul className="mx-auto mt-10 flex max-w-6xl snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-6" tabIndex={0}>
+          <ul
+            className="mx-auto mt-10 flex max-w-6xl snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-6"
+            tabIndex={0}
+          >
             {testimonials.map((t, i) => (
               <li
                 key={t.id}
@@ -310,10 +321,16 @@ export default async function HomePage() {
           </h2>
           <div className="mt-10 space-y-3">
             {faqs.slice(0, 4).map((f) => (
-              <details key={f.id} className="group reveal-up rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink-sm open:shadow-ink">
+              <details
+                key={f.id}
+                className="group reveal-up rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink-sm open:shadow-ink"
+              >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-bold">
                   {f.question}
-                  <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink bg-orange text-xl transition-transform group-open:rotate-45">
+                  <span
+                    aria-hidden="true"
+                    className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink bg-orange text-xl transition-transform group-open:rotate-45"
+                  >
                     +
                   </span>
                 </summary>

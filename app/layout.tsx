@@ -19,6 +19,9 @@ const bodoni = localFont({
   ],
   variable: "--font-bodoni",
   display: "swap",
+  // Display face: not preloaded, so the body font (which paints the first
+  // text) isn't competing for bandwidth on slow phones. Headings swap in.
+  preload: false,
 });
 const sourceSans = localFont({
   src: [

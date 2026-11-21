@@ -72,16 +72,26 @@ export function SubscriptionPanel({
               </p>
               {sub.pausedUntilLabel ? <p className="font-semibold">{sub.pausedUntilLabel}</p> : null}
               {sub.cancelAtPeriodEnd ? <p className="font-semibold">{copy.canceling}</p> : null}
-              {sub.pendingPlanName ? <p className="font-semibold">{fmt(copy.change_pending, { plan: sub.pendingPlanName })}</p> : null}
+              {sub.pendingPlanName ? (
+                <p className="font-semibold">{fmt(copy.change_pending, { plan: sub.pendingPlanName })}</p>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {sub.pausedUntilLabel ? (
-                <Button variant="outline" disabled={pending} onClick={() => run(() => changeSubscription({ subscriptionId: sub.id, action: "resume" }))}>
+                <Button
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => run(() => changeSubscription({ subscriptionId: sub.id, action: "resume" }))}
+                >
                   {copy.resume}
                 </Button>
               ) : null}
               {sub.cancelAtPeriodEnd ? (
-                <Button variant="secondary" disabled={pending} onClick={() => run(() => changeSubscription({ subscriptionId: sub.id, action: "reactivate" }))}>
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => run(() => changeSubscription({ subscriptionId: sub.id, action: "reactivate" }))}
+                >
                   {copy.reactivate}
                 </Button>
               ) : (
@@ -89,7 +99,8 @@ export function SubscriptionPanel({
                   variant="outline"
                   disabled={pending}
                   onClick={() => {
-                    if (confirm(copy.cancel_confirm)) run(() => changeSubscription({ subscriptionId: sub.id, action: "cancel" }));
+                    if (confirm(copy.cancel_confirm))
+                      run(() => changeSubscription({ subscriptionId: sub.id, action: "cancel" }));
                   }}
                 >
                   {copy.cancel}
@@ -107,7 +118,14 @@ export function SubscriptionPanel({
             >
               <label className="flex flex-col gap-1 text-sm font-semibold">
                 {copy.pause_until}
-                <Input type="date" value={until} min={minPause} max={maxPause} onChange={(e) => setUntil(e.target.value)} className="bg-paper" />
+                <Input
+                  type="date"
+                  value={until}
+                  min={minPause}
+                  max={maxPause}
+                  onChange={(e) => setUntil(e.target.value)}
+                  className="bg-paper"
+                />
               </label>
               <Button type="submit" variant="outline" disabled={pending}>
                 {copy.pause}
@@ -172,12 +190,20 @@ export function SubscriptionPanel({
                   ))}
                 </ul>
                 {current ? (
-                  <span className="mt-4 rounded-md border-2 border-ink bg-orange-tint py-2 text-center font-bold">{copy.current}</span>
+                  <span className="mt-4 rounded-md border-2 border-ink bg-orange-tint py-2 text-center font-bold">
+                    {copy.current}
+                  </span>
                 ) : (
                   <Button
                     className="mt-4"
                     disabled={pending}
-                    onClick={() => run(() => (sub ? changePlan({ subscriptionId: sub.id, planId: p.id }) : choosePlan({ planId: p.id })), sub ? undefined : copy.started)}
+                    onClick={() =>
+                      run(
+                        () =>
+                          sub ? changePlan({ subscriptionId: sub.id, planId: p.id }) : choosePlan({ planId: p.id }),
+                        sub ? undefined : copy.started,
+                      )
+                    }
                   >
                     {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
                     {sub ? copy.change : copy.start}
@@ -192,4 +218,3 @@ export function SubscriptionPanel({
     </div>
   );
 }
-

@@ -10,7 +10,21 @@ export default function robots(): MetadataRoute.Robots {
       ? {
           userAgent: "*",
           allow: "/",
-          disallow: ["/admin", "/api", "/account", "/order", "/orders", "/checkout", "/cart", "/children", "/favorites", "/subscription", "/welcome", "/school", "/auth"],
+          disallow: [
+            "/admin",
+            "/api",
+            "/account",
+            "/order",
+            "/orders",
+            "/checkout",
+            "/cart",
+            "/children",
+            "/favorites",
+            "/subscription",
+            "/welcome",
+            "/school",
+            "/auth",
+          ],
         }
       : { userAgent: "*", disallow: "/" }, // dev / staging never get indexed
     sitemap: new URL("/sitemap.xml", publicEnv.NEXT_PUBLIC_SITE_URL).toString(),

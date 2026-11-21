@@ -19,7 +19,11 @@ async function openWeek(): Promise<Week> {
     .order("week_start");
   for (const w of data ?? []) {
     const { data: cutoff } = await admin.rpc("menu_week_cutoff", { p_week: w.id });
-    if (Date.parse(cutoff as string) > Date.now() && (!w.ordering_opens_at || Date.parse(w.ordering_opens_at) <= Date.now())) return w;
+    if (
+      Date.parse(cutoff as string) > Date.now() &&
+      (!w.ordering_opens_at || Date.parse(w.ordering_opens_at) <= Date.now())
+    )
+      return w;
   }
   throw new Error("no open week in the seed");
 }
@@ -46,7 +50,11 @@ async function makeFamily(kids: { name: string; allergies?: string[] }[], onboar
     .eq("id", householdId);
   const childIds: string[] = [];
   for (const k of kids) {
-    const { data: child } = await admin.from("children").insert({ household_id: householdId, first_name: k.name }).select("id").single();
+    const { data: child } = await admin
+      .from("children")
+      .insert({ household_id: householdId, first_name: k.name })
+      .select("id")
+      .single();
     childIds.push(child!.id as string);
     for (const slug of k.allergies ?? []) {
       const { data: a } = await admin.from("allergens").select("id").eq("slug", slug).single();
@@ -106,10 +114,19 @@ test("first-time parent: onboarding → order for two kids → allergy confirmat
   await expect(page).toHaveURL(/\/order/);
 
   // A meal for each child.
-  await page.getByRole("button", { name: /Add for Pip: Baked mac & cheese|Add for Pip: Teriyaki chicken & rice/ }).first().click();
-  await page.getByRole("button", { name: /^Add: / }).first().click(); // a second portion (over the delivery minimum)
+  await page
+    .getByRole("button", { name: /Add for Pip: Baked mac & cheese|Add for Pip: Teriyaki chicken & rice/ })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: /^Add: / })
+    .first()
+    .click(); // a second portion (over the delivery minimum)
   await page.getByRole("tab", { name: /Quinn/ }).click();
-  await page.getByRole("button", { name: /Add for Quinn: Turkey & avocado wrap|Add for Quinn: Black bean quesadilla/ }).first().click();
+  await page
+    .getByRole("button", { name: /Add for Quinn: Turkey & avocado wrap|Add for Quinn: Black bean quesadilla/ })
+    .first()
+    .click();
   await expect(page.getByText("3 meals")).toBeVisible();
   await page.getByRole("link", { name: "Review & check out" }).click();
 
@@ -128,7 +145,10 @@ test("first-time parent: onboarding → order for two kids → allergy confirmat
 
   // The order is stored as paid, with the allergy confirmation and a server-computed total.
   const { data: hm } = await admin.from("household_members").select("household_id").eq("user_id", userId).single();
-  const { data: orders } = await admin.from("orders").select("status, total_cents, allergy_confirmed_by").eq("household_id", hm!.household_id);
+  const { data: orders } = await admin
+    .from("orders")
+    .select("status, total_cents, allergy_confirmed_by")
+    .eq("household_id", hm!.household_id);
   expect(orders).toHaveLength(1);
   expect(orders![0]).toMatchObject({ status: "paid", allergy_confirmed_by: userId });
   expect(orders![0]!.total_cents).toBeGreaterThan(0);
@@ -144,16 +164,28 @@ test("a peanut-allergic child cannot be given a peanut meal (UI and database)", 
 
   // Bypass the UI: call the database function with the parent's own session.
   const week = await openWeek();
-  const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const client = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
   await client.auth.signInWithPassword({ email: fam.email, password: PASSWORD });
   const { error } = await client.rpc("place_family_order", {
     p_household: fam.householdId,
     p_menu_week: week.id,
-    p_items: [{ child_id: fam.childIds[0], menu_item_id: await mealId("peanut-noodle-bowl"), quantity: 1, delivery_date: week.delivery_dates[0] }],
+    p_items: [
+      {
+        child_id: fam.childIds[0],
+        menu_item_id: await mealId("peanut-noodle-bowl"),
+        quantity: 1,
+        delivery_date: week.delivery_dates[0],
+      },
+    ],
     p_fulfillment: "delivery",
-    p_address: (await admin.from("households").select("default_address_id").eq("id", fam.householdId).single()).data!.default_address_id,
+    p_address: (await admin.from("households").select("default_address_id").eq("id", fam.householdId).single()).data!
+      .default_address_id,
     p_allergies_confirmed: true,
   });
   expect(error?.message).toMatch(/ALLERGY_BLOCK/);
@@ -174,12 +206,33 @@ test("repeat last week fills the cart in one tap from the account home", async (
   const gone = await mealId("salmon-sweet-potato"); // may not be on this week's menu → swap
   const { data: order } = await admin
     .from("orders")
-    .insert({ household_id: fam.householdId, menu_week_id: earlier!.id, status: "paid", placed_at: new Date().toISOString() })
+    .insert({
+      household_id: fam.householdId,
+      menu_week_id: earlier!.id,
+      status: "paid",
+      placed_at: new Date().toISOString(),
+    })
     .select("id")
     .single();
   await admin.from("order_items").insert([
-    { order_id: order!.id, child_id: fam.childIds[0], menu_item_id: mac, delivery_date: earlier!.week_start, quantity: 1, unit_price_cents: 895, item_name: "Baked mac & cheese" },
-    { order_id: order!.id, child_id: fam.childIds[0], menu_item_id: gone, delivery_date: earlier!.week_start, quantity: 1, unit_price_cents: 1095, item_name: "Salmon bites & sweet potato" },
+    {
+      order_id: order!.id,
+      child_id: fam.childIds[0],
+      menu_item_id: mac,
+      delivery_date: earlier!.week_start,
+      quantity: 1,
+      unit_price_cents: 895,
+      item_name: "Baked mac & cheese",
+    },
+    {
+      order_id: order!.id,
+      child_id: fam.childIds[0],
+      menu_item_id: gone,
+      delivery_date: earlier!.week_start,
+      quantity: 1,
+      unit_price_cents: 1095,
+      item_name: "Salmon bites & sweet potato",
+    },
   ]);
 
   await signInWithPassword(page, fam.email);
@@ -197,20 +250,38 @@ test("repeat last week fills the cart in one tap from the account home", async (
 test("ordering after the cutoff is rejected by the server even if the UI is bypassed", async () => {
   const fam = await makeFamily([{ name: "Late" }]);
   // A published week whose cutoff has passed (the seed's next week often is; else force one).
-  const { data: weeks } = await admin.from("menu_weeks").select("id, delivery_dates, cutoff_at").eq("status", "published").order("week_start");
+  const { data: weeks } = await admin
+    .from("menu_weeks")
+    .select("id, delivery_dates, cutoff_at")
+    .eq("status", "published")
+    .order("week_start");
   const week = weeks![weeks!.length - 1]!;
   const originalCutoff = week.cutoff_at;
-  await admin.from("menu_weeks").update({ cutoff_at: new Date(Date.now() - 60_000).toISOString() }).eq("id", week.id);
+  await admin
+    .from("menu_weeks")
+    .update({ cutoff_at: new Date(Date.now() - 60_000).toISOString() })
+    .eq("id", week.id);
   try {
-    const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const client = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+      },
+    );
     await client.auth.signInWithPassword({ email: fam.email, password: PASSWORD });
     const { data: hh } = await admin.from("households").select("default_address_id").eq("id", fam.householdId).single();
     const { error } = await client.rpc("place_family_order", {
       p_household: fam.householdId,
       p_menu_week: week.id,
-      p_items: [{ child_id: fam.childIds[0], menu_item_id: await mealId("baked-mac-and-cheese"), quantity: 1, delivery_date: week.delivery_dates[0] }],
+      p_items: [
+        {
+          child_id: fam.childIds[0],
+          menu_item_id: await mealId("baked-mac-and-cheese"),
+          quantity: 1,
+          delivery_date: week.delivery_dates[0],
+        },
+      ],
       p_fulfillment: "delivery",
       p_address: hh!.default_address_id,
       p_allergies_confirmed: true,

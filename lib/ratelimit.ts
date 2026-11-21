@@ -75,7 +75,10 @@ function getLimiters(): Record<LimiterName, Limiter> {
   if (limiters) return limiters;
   if (usesPlaceholderRedis(env.UPSTASH_REDIS_REST_URL) && env.NEXT_PUBLIC_APP_ENV !== "production") {
     limiters = Object.fromEntries(
-      (Object.keys(LIMITS) as LimiterName[]).map((name) => [name, memoryLimiter(LIMITS[name].tokens, LIMITS[name].window)]),
+      (Object.keys(LIMITS) as LimiterName[]).map((name) => [
+        name,
+        memoryLimiter(LIMITS[name].tokens, LIMITS[name].window),
+      ]),
     ) as Record<LimiterName, Limiter>;
     return limiters;
   }
@@ -88,10 +91,9 @@ function getLimiters(): Record<LimiterName, Limiter> {
       analytics: false,
       enableTelemetry: false,
     });
-  limiters = Object.fromEntries((Object.keys(LIMITS) as LimiterName[]).map((name) => [name, make(name)])) as unknown as Record<
-    LimiterName,
-    Limiter
-  >;
+  limiters = Object.fromEntries(
+    (Object.keys(LIMITS) as LimiterName[]).map((name) => [name, make(name)]),
+  ) as unknown as Record<LimiterName, Limiter>;
   return limiters;
 }
 

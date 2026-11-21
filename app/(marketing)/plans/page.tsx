@@ -18,16 +18,24 @@ export default async function PlansPage() {
   const [c, plans] = await Promise.all([getContent(), getPublicPlans().catch(() => [])]);
   const cards = plans.map((p) => ({ plan: p, ...describePlan(p, c) }));
   const rows: { label: string; values: (string | boolean)[] }[] = [
-    { label: c.text("plans.meals_label", { count: "" }).trim(), values: plans.map((p) => String(p.meals_per_interval)) },
+    {
+      label: c.text("plans.meals_label", { count: "" }).trim(),
+      values: plans.map((p) => String(p.meals_per_interval)),
+    },
     { label: c.text("plans.per_child"), values: plans.map((p) => p.allowance_unit === "per_child") },
-    { label: c.text("plans.snacks_label", { count: "" }).replace("+", "").trim(), values: plans.map((p) => (p.includes_snacks ? String(p.snacks_per_interval) : false)) },
+    {
+      label: c.text("plans.snacks_label", { count: "" }).replace("+", "").trim(),
+      values: plans.map((p) => (p.includes_snacks ? String(p.snacks_per_interval) : false)),
+    },
     { label: c.text("plans.pause_label"), values: plans.map((p) => p.allow_pause) },
   ];
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-14 md:py-20">
       <div className="grid grid-cols-12 items-end gap-4">
-        <h1 className="col-span-12 text-5xl leading-[0.95] font-black md:col-span-7 md:text-7xl">{c.text("plans.title")}</h1>
+        <h1 className="col-span-12 text-5xl leading-[0.95] font-black md:col-span-7 md:text-7xl">
+          {c.text("plans.title")}
+        </h1>
         <p className="col-span-12 text-lg md:col-span-5 md:pb-2">{c.text("plans.subtitle")}</p>
       </div>
 
@@ -83,7 +91,13 @@ export default async function PlansPage() {
                     </th>
                     {r.values.map((v, i) => (
                       <td key={i} className="p-3">
-                        {v === true ? <Check aria-label="✓" className="size-5" /> : v === false ? <Minus aria-label="–" className="size-5" /> : v}
+                        {v === true ? (
+                          <Check aria-label="✓" className="size-5" />
+                        ) : v === false ? (
+                          <Minus aria-label="–" className="size-5" />
+                        ) : (
+                          v
+                        )}
                       </td>
                     ))}
                   </tr>

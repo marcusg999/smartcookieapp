@@ -11,7 +11,9 @@ export const metadata = { title: "Favorites" };
 export default async function FavoritesPage() {
   await requireUser("/favorites");
   const [c, household, weeks] = await Promise.all([getContent(), getHousehold(), getOrderableWeeks()]);
-  const [favorites, kids] = household ? await Promise.all([getFavorites(household.id), getChildren(household.id)]) : [[], []];
+  const [favorites, kids] = household
+    ? await Promise.all([getFavorites(household.id), getChildren(household.id)])
+    : [[], []];
   const onMenu = new Set((weeks[0]?.meals ?? []).map((m) => m.id));
   const groups = [
     ...kids.map((k) => ({ id: k.id as string | null, name: k.first_name })),
@@ -39,9 +41,15 @@ export default async function FavoritesPage() {
                     <span className="flex items-center gap-2 font-semibold">
                       <Heart aria-hidden="true" className="size-4 fill-raspberry text-raspberry" /> {f.name}
                     </span>
-                    {!onMenu.has(f.menuItemId) ? <span className="text-xs text-muted-foreground">{c.text("fav.not_this_week")}</span> : null}
+                    {!onMenu.has(f.menuItemId) ? (
+                      <span className="text-xs text-muted-foreground">{c.text("fav.not_this_week")}</span>
+                    ) : null}
                   </span>
-                  <UnfavoriteButton label={`${c.text("order.unfavorite")}: ${f.name}`} menuItemId={f.menuItemId} childId={f.childId} />
+                  <UnfavoriteButton
+                    label={`${c.text("order.unfavorite")}: ${f.name}`}
+                    menuItemId={f.menuItemId}
+                    childId={f.childId}
+                  />
                 </li>
               ))}
             </ul>

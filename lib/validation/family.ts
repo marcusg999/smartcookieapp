@@ -53,9 +53,7 @@ export const childSchema = z.object({
   grade: z.string().trim().max(20).optional().or(z.literal("")),
   schoolId: uuid.optional().or(z.literal("")),
   classroomId: uuid.optional().or(z.literal("")),
-  allergies: z
-    .array(z.object({ allergenId: uuid, severity: z.enum(["intolerance", "allergy", "severe"]) }))
-    .max(30),
+  allergies: z.array(z.object({ allergenId: uuid, severity: z.enum(["intolerance", "allergy", "severe"]) })).max(30),
   dietary: z.array(z.string().trim().min(1).max(40)).max(12),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });

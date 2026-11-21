@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 export { fmt, type Copy };
 
-
 /** A child's allergies, always in allergy red (CLAUDE.md §6). */
 export function AllergyChips({
   allergies,
@@ -52,12 +51,25 @@ function subscribeClock(onChange: () => void) {
 const clockSnapshot = () => Math.floor(Date.now() / 30_000);
 
 /** Live "3d 4h left" countdown to a cutoff. Renders the static label on the server. */
-export function Countdown({ cutoff, template, closedLabel }: { cutoff: string; template: string; closedLabel: string }) {
+export function Countdown({
+  cutoff,
+  template,
+  closedLabel,
+}: {
+  cutoff: string;
+  template: string;
+  closedLabel: string;
+}) {
   const tick = useSyncExternalStore(subscribeClock, clockSnapshot, () => null);
   if (tick === null) return null;
   const left = timeLeft(cutoff, new Date(tick * 30_000));
   if (left.closed) return <span>{closedLabel}</span>;
-  const parts = left.days > 0 ? `${left.days}d ${left.hours}h` : left.hours > 0 ? `${left.hours}h ${left.minutes}m` : `${left.minutes}m`;
+  const parts =
+    left.days > 0
+      ? `${left.days}d ${left.hours}h`
+      : left.hours > 0
+        ? `${left.hours}h ${left.minutes}m`
+        : `${left.minutes}m`;
   return (
     <span className={cn(left.totalMs < 6 * 3_600_000 && "animate-pulse")} suppressHydrationWarning>
       {fmt(template, { time: parts })}
@@ -103,7 +115,15 @@ export function Chip({
 }
 
 /** A section card in the family area's visual language. */
-export function Panel({ children, className, as: As = "section" }: { children: ReactNode; className?: string; as?: "section" | "div" | "li" }) {
+export function Panel({
+  children,
+  className,
+  as: As = "section",
+}: {
+  children: ReactNode;
+  className?: string;
+  as?: "section" | "div" | "li";
+}) {
   return <As className={cn("rounded-2xl border-2 border-ink bg-paper p-5 shadow-ink", className)}>{children}</As>;
 }
 

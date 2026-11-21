@@ -93,14 +93,24 @@ export function priceCart(input: {
     }
     if (covered > 0) anyCovered = true;
     subtotal += meal.priceCents * (qty - covered);
-    lines.push({ ...line, quantity: qty, unitPriceCents: meal.priceCents, coveredQty: covered, paidQty: qty - covered });
+    lines.push({
+      ...line,
+      quantity: qty,
+      unitPriceCents: meal.priceCents,
+      coveredQty: covered,
+      paidQty: qty - covered,
+    });
   }
 
   const zone = input.zone ?? null;
   const belowMinimum = Boolean(zone && !anyCovered && gross < zone.minOrderCents);
   const fee = zone ? (zone.freeOverCents !== null && gross >= zone.freeOverCents ? 0 : zone.feeCents) : 0;
   const d = input.discount;
-  const discount = d ? (d.type === "percent" ? Math.floor((subtotal * d.value) / 100) : Math.min(d.value, subtotal)) : 0;
+  const discount = d
+    ? d.type === "percent"
+      ? Math.floor((subtotal * d.value) / 100)
+      : Math.min(d.value, subtotal)
+    : 0;
   const tax = input.taxBps ? Math.round(((subtotal - discount) * input.taxBps) / 10000) : 0;
 
   return {
@@ -136,14 +146,18 @@ export function blockingAllergens(
   const contains = new Set(meal.contains.map((a) => a.toLowerCase()));
   const may = new Set(meal.mayContain.map((a) => a.toLowerCase()));
   return child.allergies
-    .filter((a) => contains.has(a.allergen.toLowerCase()) || (a.severity === "severe" && may.has(a.allergen.toLowerCase())))
+    .filter(
+      (a) => contains.has(a.allergen.toLowerCase()) || (a.severity === "severe" && may.has(a.allergen.toLowerCase())),
+    )
     .map((a) => a.allergen);
 }
 
 /** "May contain" matches that only warn (not severe). */
 export function warningAllergens(child: { allergies: ChildAllergy[] }, meal: MealAllergens): string[] {
   const may = new Set(meal.mayContain.map((a) => a.toLowerCase()));
-  return child.allergies.filter((a) => a.severity !== "severe" && may.has(a.allergen.toLowerCase())).map((a) => a.allergen);
+  return child.allergies
+    .filter((a) => a.severity !== "severe" && may.has(a.allergen.toLowerCase()))
+    .map((a) => a.allergen);
 }
 
 // ─── Repeat last week ────────────────────────────────────────────────────────
@@ -217,7 +231,13 @@ export function planRepeat(input: {
     }
     used.add(pick.id);
     result.lines.push({ childId: last.childId, menuItemId: pick.id, deliveryDate, quantity: last.quantity });
-    result.swaps.push({ childId: last.childId, deliveryDate, fromName: last.name, fromId: last.menuItemId, toId: pick.id });
+    result.swaps.push({
+      childId: last.childId,
+      deliveryDate,
+      fromName: last.name,
+      fromId: last.menuItemId,
+      toId: pick.id,
+    });
   }
   return result;
 }
@@ -267,5 +287,11 @@ export function timeLeft(cutoffIso: string, now: Date = new Date()): TimeLeft {
   const ms = Date.parse(cutoffIso) - now.getTime();
   if (ms <= 0) return { closed: true, days: 0, hours: 0, minutes: 0, totalMs: 0 };
   const minutes = Math.floor(ms / 60_000);
-  return { closed: false, days: Math.floor(minutes / 1440), hours: Math.floor((minutes % 1440) / 60), minutes: minutes % 60, totalMs: ms };
+  return {
+    closed: false,
+    days: Math.floor(minutes / 1440),
+    hours: Math.floor((minutes % 1440) / 60),
+    minutes: minutes % 60,
+    totalMs: ms,
+  };
 }

@@ -78,7 +78,11 @@ export default async function OrderPage({ searchParams }: PageProps<"/order">) {
   const supabase = await createClient();
   let editing: { id: string; number: string } | null = null;
   if (cart.replacesOrderId) {
-    const { data } = await supabase.from("orders").select("id, order_number").eq("id", cart.replacesOrderId).maybeSingle();
+    const { data } = await supabase
+      .from("orders")
+      .select("id, order_number")
+      .eq("id", cart.replacesOrderId)
+      .maybeSingle();
     if (data) editing = { id: data.id, number: data.order_number };
   }
   const existing = editing ? null : await getWeekOrder(household.id, week.id);
@@ -157,13 +161,20 @@ export default async function OrderPage({ searchParams }: PageProps<"/order">) {
         existingOrder={existing ? { id: existing.id, number: existing.order_number } : null}
         plan={plan}
         usedElsewhere={usedElsewhere}
-        subscription={sub && ["active", "trialing"].includes(sub.status) ? { id: sub.id, canSkip: sub.plan.allow_skip, skipped } : null}
+        subscription={
+          sub && ["active", "trialing"].includes(sub.status)
+            ? { id: sub.id, canSkip: sub.plan.allow_skip, skipped }
+            : null
+        }
         favorites={favorites.map((f) => ({ childId: f.childId, menuItemId: f.menuItemId }))}
         savedOrders={savedOrders.map((s) => ({ id: s.id, name: s.name }))}
         autoRepeat={sp.repeat === "1"}
       />
 
-      <RichText doc={c.rich("menu.allergen_disclaimer")} className="mt-10 rounded-xl border-2 border-ink bg-paper p-4 text-sm" />
+      <RichText
+        doc={c.rich("menu.allergen_disclaimer")}
+        className="mt-10 rounded-xl border-2 border-ink bg-paper p-4 text-sm"
+      />
     </div>
   );
 }

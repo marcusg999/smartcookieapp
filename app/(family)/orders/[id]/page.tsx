@@ -50,10 +50,23 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-paper p-4">
         <p className="text-sm font-semibold">
           {canChange && typeof cutoff === "string"
-            ? fmt(copy.change_until, { date: formatInZone(cutoff, tz, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) })
+            ? fmt(copy.change_until, {
+                date: formatInZone(cutoff, tz, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+              })
             : copy.locked}
         </p>
-        <OrderActions copy={copy} orderId={order.id} canChange={canChange} canPay={order.status === "pending_payment" && order.total_cents > 0} />
+        <OrderActions
+          copy={copy}
+          orderId={order.id}
+          canChange={canChange}
+          canPay={order.status === "pending_payment" && order.total_cents > 0}
+        />
       </div>
 
       {[...byChild.entries()].map(([childId, items]) => {
@@ -68,7 +81,8 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
               {items.map((i) => (
                 <li key={i.id} className="flex justify-between gap-3 py-2 text-sm">
                   <span>
-                    <span className="font-semibold">{i.delivery_date ? formatDay(i.delivery_date) : ""}</span> · {i.item_name} × {i.quantity}
+                    <span className="font-semibold">{i.delivery_date ? formatDay(i.delivery_date) : ""}</span> ·{" "}
+                    {i.item_name} × {i.quantity}
                     {i.allergens_contained.length ? (
                       <span className="block text-xs font-bold text-allergy">
                         {c.text("menu.contains_label")}: {i.allergens_contained.join(", ")}
@@ -76,7 +90,9 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
                     ) : null}
                   </span>
                   <span className="shrink-0 font-semibold">
-                    {i.covered_by_subscription ? c.text("checkout.included") : formatCents(i.unit_price_cents * i.quantity, order.currency)}
+                    {i.covered_by_subscription
+                      ? c.text("checkout.included")
+                      : formatCents(i.unit_price_cents * i.quantity, order.currency)}
                   </span>
                 </li>
               ))}
@@ -116,7 +132,14 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
               </p>
               {order.address_snapshot ? (
                 <p className="mt-1">
-                  {[order.address_snapshot.line1, order.address_snapshot.line2, order.address_snapshot.city, order.address_snapshot.zip].filter(Boolean).join(", ")}
+                  {[
+                    order.address_snapshot.line1,
+                    order.address_snapshot.line2,
+                    order.address_snapshot.city,
+                    order.address_snapshot.zip,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
                 </p>
               ) : null}
             </>
@@ -125,7 +148,14 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
         {order.allergy_confirmed_at ? (
           <p className="flex items-center gap-2 rounded-2xl border-2 border-ink bg-paper p-4 text-sm font-semibold">
             <ShieldCheck aria-hidden="true" className="size-4" />
-            {fmt(copy.allergies_confirmed, { date: formatInZone(order.allergy_confirmed_at, tz, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) })}
+            {fmt(copy.allergies_confirmed, {
+              date: formatInZone(order.allergy_confirmed_at, tz, {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+            })}
           </p>
         ) : null}
       </div>

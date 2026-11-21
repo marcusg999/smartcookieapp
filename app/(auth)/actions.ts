@@ -202,7 +202,9 @@ export async function signUp(_prev: ActionResult | null, formData: FormData): Pr
       ? await createPublicClient().rpc("pilot_code_is_valid", { p_code: code, p_email: parsed.data.email })
       : { data: false };
     if (!valid) {
-      return fail("validation", "That invite code isn't valid.", { pilotCode: "That invite code isn't valid or has been used." });
+      return fail("validation", "That invite code isn't valid.", {
+        pilotCode: "That invite code isn't valid or has been used.",
+      });
     }
   }
 
