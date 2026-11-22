@@ -14,9 +14,20 @@ export function stripeMockMode(): boolean {
   return /^(sk|rk)_test_(ci_)?dummy$/.test(env.STRIPE_SECRET_KEY);
 }
 
+/**
+ * Pinned API version (Phase 6). It matches the version stripe-node 23.2 was
+ * built for, so the TypeScript types describe what Stripe actually returns.
+ * Upgrading is a deliberate change: bump stripe-node, then this, then test.
+ */
+export const STRIPE_API_VERSION = "2026-11-18.endive" as const;
+
 let client: Stripe | null = null;
-function stripe(): Stripe {
-  client ??= new Stripe(env.STRIPE_SECRET_KEY, { appInfo: { name: "Smart Cookie" } });
+export function stripe(): Stripe {
+  client ??= new Stripe(env.STRIPE_SECRET_KEY, {
+    apiVersion: STRIPE_API_VERSION,
+    maxNetworkRetries: 2,
+    appInfo: { name: "Smart Cookie" },
+  });
   return client;
 }
 

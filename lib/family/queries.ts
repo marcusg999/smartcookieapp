@@ -348,6 +348,10 @@ export type OrderDetail = {
   discount_cents: number;
   tax_cents: number;
   total_cents: number;
+  credit_cents: number;
+  amount_paid_cents: number;
+  amount_refunded_cents: number;
+  last_payment_error: string | null;
   currency: string;
   placed_at: string | null;
   allergy_confirmed_at: string | null;
@@ -373,7 +377,8 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     .from("orders")
     .select(
       `id, order_number, status, source, fulfillment, menu_week_id, subtotal_cents, delivery_fee_cents, discount_cents, tax_cents,
-       total_cents, currency, placed_at, allergy_confirmed_at, address_snapshot, notes,
+       total_cents, currency, placed_at, allergy_confirmed_at, address_snapshot, notes, credit_cents, amount_paid_cents,
+       amount_refunded_cents, last_payment_error,
        order_items ( id, child_id, menu_item_id, delivery_date, quantity, unit_price_cents, item_name, allergens_contained, may_contain, covered_by_subscription )`,
     )
     .eq("id", orderId)

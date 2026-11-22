@@ -47,6 +47,7 @@ describe("buildCsp (production)", () => {
     );
     expect(directive(csp, "frame-src")).toEqual([
       "https://js.stripe.com",
+      "https://*.js.stripe.com",
       "https://hooks.stripe.com",
       "https://challenges.cloudflare.com",
     ]);
