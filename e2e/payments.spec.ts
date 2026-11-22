@@ -147,7 +147,15 @@ test("3D Secure: Stripe's challenge page, then paid", async ({ page, baseURL }) 
   const url = pi?.next_action?.redirect_to_url?.url;
   expect(url).toBeTruthy();
   await page.goto(url!);
-  await page.getByRole("button", { name: /complete/i }).first().click({ timeout: 60_000 });
+  // Stripe's 3DS2 test page: an outer frame with a dialog holding the challenge frame.
+  await page
+    .frameLocator("iframe")
+    .first()
+    .frameLocator("iframe")
+    .first()
+    .getByRole("button", { name: /complete/i })
+    .first()
+    .click({ timeout: 60_000 });
   await page.waitForURL(/\/checkout\?order=/, { timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "You're all set!" })).toBeVisible({ timeout: 60_000 });
   expect((await orderFor(fam.householdId)).status).toBe("paid");
