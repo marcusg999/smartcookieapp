@@ -101,7 +101,10 @@ export default async function OrderPage({ searchParams }: PageProps<"/order">) {
         </p>
       ) : null}
       {sub && (["past_due", "unpaid"].includes(sub.status) || sub.payment_failed_at) ? (
-        <p role="alert" className="mb-4 rounded-xl border-2 border-destructive bg-paper px-4 py-2 font-semibold text-destructive">
+        <p
+          role="alert"
+          className="mb-4 rounded-xl border-2 border-destructive bg-paper px-4 py-2 font-semibold text-destructive"
+        >
           {c.text("sub.past_due_banner")}{" "}
           <Link href="/subscription" className="underline">
             {c.text("sub.update_card")}

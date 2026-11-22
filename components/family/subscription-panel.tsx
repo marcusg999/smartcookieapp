@@ -152,7 +152,10 @@ export function SubscriptionPanel({
         </section>
       ) : null}
       {sub?.pastDue ? (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-destructive bg-paper p-4">
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-destructive bg-paper p-4"
+        >
           <p className="flex items-center gap-2 font-bold text-destructive">
             <TriangleAlert aria-hidden="true" className="size-5" /> {copy.past_due_banner}
           </p>
@@ -164,7 +167,8 @@ export function SubscriptionPanel({
       {sub && sub.perChild && sub.quantity !== kidsCount && kidsCount > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-orange-tint p-4">
           <p className="flex items-center gap-2 font-semibold">
-            <Users aria-hidden="true" className="size-5" /> {fmt(copy.quantity_mismatch, { count: sub.quantity, kids: kidsCount })}
+            <Users aria-hidden="true" className="size-5" />{" "}
+            {fmt(copy.quantity_mismatch, { count: sub.quantity, kids: kidsCount })}
           </p>
           <Button
             variant="outline"

@@ -490,7 +490,11 @@ export async function placeOrder(input: unknown): Promise<
     orderNumber: string;
     totalCents: number;
     status: string;
-    change?: { kind: "settled" | "charged" | "refunded" | "client_secret"; amountCents?: number; clientSecret?: string };
+    change?: {
+      kind: "settled" | "charged" | "refunded" | "client_secret";
+      amountCents?: number;
+      clientSecret?: string;
+    };
   }>
 > {
   return familyAction(
@@ -524,7 +528,9 @@ export async function placeOrder(input: unknown): Promise<
       if (error) throw error;
       check(await supabase.from("carts").delete().eq("household_id", householdId).eq("menu_week_id", data.weekId));
 
-      let change: { kind: "settled" | "charged" | "refunded" | "client_secret"; amountCents?: number; clientSecret?: string } | undefined;
+      let change:
+        | { kind: "settled" | "charged" | "refunded" | "client_secret"; amountCents?: number; clientSecret?: string }
+        | undefined;
       if (replacing) {
         try {
           change = await getPaymentProvider().settleOrderChange(orderId as string, user.id);
@@ -562,7 +568,9 @@ export async function placeOrder(input: unknown): Promise<
  */
 export async function startPayment(
   input: unknown,
-): Promise<ActionResult<{ kind: "paid" | "nothing_due" | "client_secret"; clientSecret?: string; amountCents?: number }>> {
+): Promise<
+  ActionResult<{ kind: "paid" | "nothing_due" | "client_secret"; clientSecret?: string; amountCents?: number }>
+> {
   return familyAction(
     { schema: z.object({ orderId: uuid }), input, limiter: "checkout" },
     async ({ orderId }, { supabase }) => {
@@ -734,7 +742,11 @@ export async function setWeekSkip(input: unknown): Promise<ActionResult<{ credit
         creditCents = await getPaymentProvider().applySkipCredit(subscriptionId, weekId, skip);
       } catch (e) {
         // Put the week back the way it was so the DB and Stripe agree.
-        await supabase.rpc("set_subscription_week_skip", { p_subscription: subscriptionId, p_week: weekId, p_skip: !skip });
+        await supabase.rpc("set_subscription_week_skip", {
+          p_subscription: subscriptionId,
+          p_week: weekId,
+          p_skip: !skip,
+        });
         console.error("skip credit failed", { message: (e as Error).message });
         return fail("unknown", "We couldn't update this week. Please try again.");
       }
@@ -776,7 +788,12 @@ export async function changeSubscription(input: unknown): Promise<ActionResult> 
         if (action === "reactivate") await provider.setCancelAtPeriodEnd(subscriptionId, false);
       } catch (e) {
         const back = REVERSE[action];
-        if (back) await supabase.rpc("request_subscription_change", { p_subscription: subscriptionId, p_action: back, p_until: null });
+        if (back)
+          await supabase.rpc("request_subscription_change", {
+            p_subscription: subscriptionId,
+            p_action: back,
+            p_until: null,
+          });
         console.error("subscription change failed", { message: (e as Error).message });
         return fail("unknown", "We couldn't update your plan. Please try again.");
       }
@@ -793,7 +810,11 @@ export async function changePlan(input: unknown): Promise<ActionResult> {
   return familyAction(
     { schema: z.object({ subscriptionId: uuid, planId: uuid }), input },
     async ({ subscriptionId, planId }, { supabase }) => {
-      const { data: current } = await supabase.from("subscriptions").select("plan_id").eq("id", subscriptionId).maybeSingle();
+      const { data: current } = await supabase
+        .from("subscriptions")
+        .select("plan_id")
+        .eq("id", subscriptionId)
+        .maybeSingle();
       if (!current) return fail("validation", "Subscription not found.");
       const { error } = await supabase.rpc("request_plan_change", { p_subscription: subscriptionId, p_plan: planId });
       if (error) throw error;
@@ -816,7 +837,11 @@ export async function syncPlanQuantity(input: unknown): Promise<ActionResult<{ q
     { schema: z.object({ subscriptionId: uuid }), input },
     async ({ subscriptionId }, { supabase, householdId }) => {
       // RLS: only this household's subscription is visible.
-      const { data: sub } = await supabase.from("subscriptions").select("id, plans ( allowance_unit )").eq("id", subscriptionId).maybeSingle();
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("id, plans ( allowance_unit )")
+        .eq("id", subscriptionId)
+        .maybeSingle();
       if (!sub) return fail("validation", "Subscription not found.");
       const { count } = await supabase
         .from("children")

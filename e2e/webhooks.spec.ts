@@ -15,9 +15,16 @@ test.describe.configure({ mode: "parallel" });
 const signer = new Stripe("sk_test_signing_only");
 const secret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-async function deliver(request: APIRequestContext, event: Record<string, unknown>, opts: { badSignature?: boolean } = {}) {
+async function deliver(
+  request: APIRequestContext,
+  event: Record<string, unknown>,
+  opts: { badSignature?: boolean } = {},
+) {
   const payload = JSON.stringify(event);
-  const header = signer.webhooks.generateTestHeaderString({ payload, secret: opts.badSignature ? "whsec_wrong" : secret });
+  const header = signer.webhooks.generateTestHeaderString({
+    payload,
+    secret: opts.badSignature ? "whsec_wrong" : secret,
+  });
   return request.post("/api/webhooks/stripe", {
     data: payload,
     headers: { "content-type": "application/json", "stripe-signature": header },
@@ -52,18 +59,31 @@ async function pendingOrder() {
     .select("id")
     .single();
   const pi = `pi_test_${randomUUID().replace(/-/g, "").slice(0, 20)}`;
-  await admin.rpc("stripe_record_payment_intent", { p_order: order!.id, p_payment_intent: pi, p_kind: "charge", p_amount: 2000, p_currency: "usd" });
+  await admin.rpc("stripe_record_payment_intent", {
+    p_order: order!.id,
+    p_payment_intent: pi,
+    p_kind: "charge",
+    p_amount: 2000,
+    p_currency: "usd",
+  });
   return { orderId: order!.id as string, pi, householdId: hm!.household_id as string };
 }
 
 test("a bad signature is rejected with 400", async ({ request }) => {
-  const res = await deliver(request, evt("payment_intent.succeeded", { id: "pi_x", amount_received: 1 }), { badSignature: true });
+  const res = await deliver(request, evt("payment_intent.succeeded", { id: "pi_x", amount_received: 1 }), {
+    badSignature: true,
+  });
   expect(res.status()).toBe(400);
 });
 
 test("payment_intent.succeeded marks the order paid, and a replayed event is ignored", async ({ request }) => {
   const { orderId, pi } = await pendingOrder();
-  const event = evt("payment_intent.succeeded", { id: pi, object: "payment_intent", amount_received: 2000, metadata: { order_id: orderId } });
+  const event = evt("payment_intent.succeeded", {
+    id: pi,
+    object: "payment_intent",
+    amount_received: 2000,
+    metadata: { order_id: orderId },
+  });
   const first = await deliver(request, event);
   expect(first.status()).toBe(200);
   expect((await first.json()).outcome).toBe("paid");
@@ -75,16 +95,24 @@ test("payment_intent.succeeded marks the order paid, and a replayed event is ign
 
 test("payment_intent.payment_failed records the error; charge.refunded marks it refunded", async ({ request }) => {
   const { orderId, pi } = await pendingOrder();
-  await deliver(request, evt("payment_intent.payment_failed", { id: pi, last_payment_error: { message: "Your card was declined." } }));
+  await deliver(
+    request,
+    evt("payment_intent.payment_failed", { id: pi, last_payment_error: { message: "Your card was declined." } }),
+  );
   let { data: o } = await admin.from("orders").select("last_payment_error, status").eq("id", orderId).single();
   expect(o).toMatchObject({ last_payment_error: "Your card was declined.", status: "pending_payment" });
-  await deliver(request, evt("payment_intent.succeeded", { id: pi, amount_received: 2000, metadata: { order_id: orderId } }));
+  await deliver(
+    request,
+    evt("payment_intent.succeeded", { id: pi, amount_received: 2000, metadata: { order_id: orderId } }),
+  );
   await deliver(request, evt("charge.refunded", { id: "ch_x", payment_intent: pi, amount_refunded: 2000 }));
   ({ data: o } = await admin.from("orders").select("last_payment_error, status").eq("id", orderId).single());
   expect(o!.status).toBe("refunded");
 });
 
-test("out of order: invoice.paid before subscription.created still creates allowances, and stale updates are ignored", async ({ request }) => {
+test("out of order: invoice.paid before subscription.created still creates allowances, and stale updates are ignored", async ({
+  request,
+}) => {
   const userId = await createUser(uniqueEmail("whsub"));
   const { data: hm } = await admin.from("household_members").select("household_id").eq("user_id", userId).single();
   const { data: plan } = await admin.from("plans").select("id").eq("slug", "3-lunches-week").single();
@@ -104,14 +132,24 @@ test("out of order: invoice.paid before subscription.created still creates allow
     evt("invoice.paid", {
       id: `in_test_${randomUUID().slice(0, 8)}`,
       object: "invoice",
-      parent: { type: "subscription_details", subscription_details: { subscription: stripeSub, metadata: { subscription_id: sub!.id } } },
+      parent: {
+        type: "subscription_details",
+        subscription_details: { subscription: stripeSub, metadata: { subscription_id: sub!.id } },
+      },
       lines: { data: [{ period: { start, end } }] },
     }),
   );
   expect((await paid.json()).outcome).toBe("allowances");
-  const { data: s1 } = await admin.from("subscriptions").select("status, stripe_subscription_id").eq("id", sub!.id).single();
+  const { data: s1 } = await admin
+    .from("subscriptions")
+    .select("status, stripe_subscription_id")
+    .eq("id", sub!.id)
+    .single();
   expect(s1).toEqual({ status: "active", stripe_subscription_id: stripeSub });
-  const { count } = await admin.from("subscription_allowances").select("id", { count: "exact", head: true }).eq("subscription_id", sub!.id);
+  const { count } = await admin
+    .from("subscription_allowances")
+    .select("id", { count: "exact", head: true })
+    .eq("subscription_id", sub!.id);
   expect(count).toBeGreaterThanOrEqual(1);
 
   // 2) A newer update (cancel at period end), then an OLDER created event: the older one must not roll it back.
@@ -123,11 +161,17 @@ test("out of order: invoice.paid before subscription.created still creates allow
     cancel_at_period_end: cancel,
     pause_collection: null,
     metadata: { subscription_id: sub!.id },
-    items: { data: [{ quantity: 2, current_period_start: start, current_period_end: end, price: { id: "price_unknown" } }] },
+    items: {
+      data: [{ quantity: 2, current_period_start: start, current_period_end: end, price: { id: "price_unknown" } }],
+    },
   });
   await deliver(request, evt("customer.subscription.updated", object(true), now));
   await deliver(request, evt("customer.subscription.created", object(false), now - 60));
-  const { data: s2 } = await admin.from("subscriptions").select("cancel_at_period_end, quantity").eq("id", sub!.id).single();
+  const { data: s2 } = await admin
+    .from("subscriptions")
+    .select("cancel_at_period_end, quantity")
+    .eq("id", sub!.id)
+    .single();
   expect(s2).toEqual({ cancel_at_period_end: true, quantity: 2 });
 });
 

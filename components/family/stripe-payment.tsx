@@ -56,7 +56,12 @@ export function StripePayment(props: {
   );
 }
 
-function PaymentForm({ amountLabel, returnUrl, copy, onConfirmed }: Omit<Parameters<typeof StripePayment>[0], "clientSecret">) {
+function PaymentForm({
+  amountLabel,
+  returnUrl,
+  copy,
+  onConfirmed,
+}: Omit<Parameters<typeof StripePayment>[0], "clientSecret">) {
   const stripe = useStripe();
   const elements = useElements();
   const [ready, setReady] = useState(false);
@@ -76,7 +81,9 @@ function PaymentForm({ amountLabel, returnUrl, copy, onConfirmed }: Omit<Paramet
     setBusy(false);
     if (err) {
       // Card and validation errors are safe and specific; anything else is generic.
-      setError(err.type === "card_error" || err.type === "validation_error" ? (err.message ?? copy.pay_error) : copy.pay_error);
+      setError(
+        err.type === "card_error" || err.type === "validation_error" ? (err.message ?? copy.pay_error) : copy.pay_error,
+      );
       return;
     }
     if (paymentIntent && ["succeeded", "processing", "requires_capture"].includes(paymentIntent.status)) onConfirmed();
@@ -86,7 +93,10 @@ function PaymentForm({ amountLabel, returnUrl, copy, onConfirmed }: Omit<Paramet
     <form onSubmit={submit} className="space-y-4">
       <PaymentElement options={{ layout: { type: "tabs" } }} onReady={() => setReady(true)} />
       {error ? (
-        <p role="alert" className="rounded-lg border-2 border-destructive bg-paper p-3 text-sm font-semibold text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border-2 border-destructive bg-paper p-3 text-sm font-semibold text-destructive"
+        >
           {error}
         </p>
       ) : null}

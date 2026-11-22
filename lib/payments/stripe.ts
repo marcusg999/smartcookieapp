@@ -28,9 +28,16 @@ function check<T>(res: { data: T; error: { message: string } | null }): NonNulla
 }
 
 /** One Stripe Customer per household, created on first checkout. */
-export async function ensureHouseholdCustomer(householdId: string, admin: Admin = createAdminClient()): Promise<string> {
+export async function ensureHouseholdCustomer(
+  householdId: string,
+  admin: Admin = createAdminClient(),
+): Promise<string> {
   const hh = check(
-    await admin.from("households").select("id, name, stripe_customer_id, primary_user_id").eq("id", householdId).single(),
+    await admin
+      .from("households")
+      .select("id, name, stripe_customer_id, primary_user_id")
+      .eq("id", householdId)
+      .single(),
   );
   if (hh.stripe_customer_id) return hh.stripe_customer_id as string;
   const { data: user } = await admin.auth.admin.getUserById(hh.primary_user_id as string);
@@ -44,7 +51,11 @@ export async function ensureHouseholdCustomer(householdId: string, admin: Admin 
     { idempotencyKey: `customer:household:${householdId}` },
   );
   // Only set it if nobody else did in the meantime.
-  await admin.from("households").update({ stripe_customer_id: customer.id }).eq("id", householdId).is("stripe_customer_id", null);
+  await admin
+    .from("households")
+    .update({ stripe_customer_id: customer.id })
+    .eq("id", householdId)
+    .is("stripe_customer_id", null);
   const again = check(await admin.from("households").select("stripe_customer_id").eq("id", householdId).single());
   return again.stripe_customer_id as string;
 }
@@ -118,7 +129,10 @@ export async function startOrderPayment(orderId: string): Promise<PaymentStart> 
     if (reusable && pi.amount === due && pi.client_secret) {
       return { status: "requires_payment", clientSecret: pi.client_secret, amountCents: due, paymentIntentId: pi.id };
     }
-    if (reusable) await stripe().paymentIntents.cancel(pi.id).catch(() => undefined);
+    if (reusable)
+      await stripe()
+        .paymentIntents.cancel(pi.id)
+        .catch(() => undefined);
   }
 
   const customer = await ensureHouseholdCustomer(order.household_id as string, admin);
@@ -181,7 +195,12 @@ export async function settleOrderChange(orderId: string, requestedBy: string): P
     const row = check(
       await admin
         .from("order_refunds")
-        .insert({ order_id: orderId, amount_cents: amount, reason: "Order changed before cutoff", requested_by: requestedBy })
+        .insert({
+          order_id: orderId,
+          amount_cents: amount,
+          reason: "Order changed before cutoff",
+          requested_by: requestedBy,
+        })
         .select("id")
         .single(),
     );
@@ -206,7 +225,8 @@ export async function settleOrderChange(orderId: string, requestedBy: string): P
     .limit(1)
     .maybeSingle();
   const previous = paid ? await stripe().paymentIntents.retrieve(paid.stripe_payment_intent_id as string) : null;
-  const paymentMethod = typeof previous?.payment_method === "string" ? previous.payment_method : previous?.payment_method?.id;
+  const paymentMethod =
+    typeof previous?.payment_method === "string" ? previous.payment_method : previous?.payment_method?.id;
   const customer = await ensureHouseholdCustomer(order.household_id as string, admin);
   if (!paymentMethod) {
     const start = await startOrderPayment(orderId);
@@ -282,7 +302,11 @@ export async function settleOrderChange(orderId: string, requestedBy: string): P
  */
 export async function executeRefund(refundId: string, admin: Admin = createAdminClient()): Promise<void> {
   const refund = check(
-    await admin.from("order_refunds").select("id, order_id, amount_cents, reason, requested_by, status").eq("id", refundId).single(),
+    await admin
+      .from("order_refunds")
+      .select("id, order_id, amount_cents, reason, requested_by, status")
+      .eq("id", refundId)
+      .single(),
   );
   if (refund.status !== "pending") return;
   const { data: payments } = await admin
@@ -302,7 +326,12 @@ export async function executeRefund(refundId: string, admin: Admin = createAdmin
       const extra = check(
         await admin
           .from("order_refunds")
-          .insert({ order_id: refund.order_id, amount_cents: amount, reason: refund.reason, requested_by: refund.requested_by })
+          .insert({
+            order_id: refund.order_id,
+            amount_cents: amount,
+            reason: refund.reason,
+            requested_by: refund.requested_by,
+          })
           .select("id")
           .single(),
       );
@@ -316,7 +345,11 @@ export async function executeRefund(refundId: string, admin: Admin = createAdmin
           payment_intent: p.stripe_payment_intent_id as string,
           amount,
           reason: "requested_by_customer",
-          metadata: { order_id: refund.order_id as string, refund_row: rowId, note: (refund.reason as string).slice(0, 200) },
+          metadata: {
+            order_id: refund.order_id as string,
+            refund_row: rowId,
+            note: (refund.reason as string).slice(0, 200),
+          },
         },
         { idempotencyKey: `refund:${rowId}:${p.stripe_payment_intent_id}` },
       );
@@ -327,8 +360,11 @@ export async function executeRefund(refundId: string, admin: Admin = createAdmin
         p_error: null,
       });
       if (r.status === "succeeded") {
-        const charge = await stripe().paymentIntents.retrieve(p.stripe_payment_intent_id as string, { expand: ["latest_charge"] });
-        const refunded = typeof charge.latest_charge === "object" && charge.latest_charge ? charge.latest_charge.amount_refunded : 0;
+        const charge = await stripe().paymentIntents.retrieve(p.stripe_payment_intent_id as string, {
+          expand: ["latest_charge"],
+        });
+        const refunded =
+          typeof charge.latest_charge === "object" && charge.latest_charge ? charge.latest_charge.amount_refunded : 0;
         await admin.rpc("stripe_payment_refunded", { p_payment_intent: charge.id, p_refunded_total: refunded });
       }
     } catch (error) {

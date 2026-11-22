@@ -52,7 +52,8 @@ export async function POST(request: Request) {
           .eq("id", orderId)
           .single();
         const net = (o?.amount_paid_cents ?? 0) - (o?.amount_refunded_cents ?? 0);
-        const requestedBy = (o as unknown as { households: { primary_user_id: string } | null })?.households?.primary_user_id;
+        const requestedBy = (o as unknown as { households: { primary_user_id: string } | null })?.households
+          ?.primary_user_id;
         if (net <= 0 || !requestedBy) return;
         const { data: row } = await admin
           .from("order_refunds")

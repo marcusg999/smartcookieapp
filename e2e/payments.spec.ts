@@ -37,11 +37,22 @@ async function familyWithCart() {
     .insert({ household_id: householdId, line1: "1 Pay St", city: "Pasadena", zip: "91105", is_default: true })
     .select("id")
     .single();
-  await admin.from("households").update({ default_address_id: addr!.id, onboarded_at: new Date().toISOString() }).eq("id", householdId);
-  const { data: child } = await admin.from("children").insert({ household_id: householdId, first_name: "Penny" }).select("id").single();
+  await admin
+    .from("households")
+    .update({ default_address_id: addr!.id, onboarded_at: new Date().toISOString() })
+    .eq("id", householdId);
+  const { data: child } = await admin
+    .from("children")
+    .insert({ household_id: householdId, first_name: "Penny" })
+    .select("id")
+    .single();
 
   // First open week + three mains (over the delivery minimum).
-  const { data: weeks } = await admin.from("menu_weeks").select("id, delivery_dates").eq("status", "published").order("week_start");
+  const { data: weeks } = await admin
+    .from("menu_weeks")
+    .select("id, delivery_dates")
+    .eq("status", "published")
+    .order("week_start");
   let week: { id: string; delivery_dates: string[] } | undefined;
   for (const w of weeks ?? []) {
     const { data: cutoff } = await admin.rpc("menu_week_cutoff", { p_week: w.id });
@@ -102,7 +113,9 @@ async function orderFor(householdId: string) {
 async function confirmWith(orderId: string, paymentMethod: string, returnUrl: string) {
   // The payment step creates the PaymentIntent when it opens.
   await expect
-    .poll(async () => (await admin.from("order_payments").select("id").eq("order_id", orderId)).data?.length ?? 0, { timeout: 30_000 })
+    .poll(async () => (await admin.from("order_payments").select("id").eq("order_id", orderId)).data?.length ?? 0, {
+      timeout: 30_000,
+    })
     .toBeGreaterThan(0);
   const { data: pay } = await admin
     .from("order_payments")

@@ -87,8 +87,10 @@ export function CheckoutFlow({
       if (!res.ok) return void toast.error(res.message);
       setStep("payment");
       const change = res.data!.change;
-      if (change?.kind === "charged") toast.success(fmt(copy.change_charged, { amount: formatCents(change.amountCents ?? 0) }));
-      if (change?.kind === "refunded") toast.success(fmt(copy.change_refunded, { amount: formatCents(change.amountCents ?? 0) }));
+      if (change?.kind === "charged")
+        toast.success(fmt(copy.change_charged, { amount: formatCents(change.amountCents ?? 0) }));
+      if (change?.kind === "refunded")
+        toast.success(fmt(copy.change_refunded, { amount: formatCents(change.amountCents ?? 0) }));
       // Payment renders from the saved order, so a refresh never loses it.
       router.replace(`/checkout?order=${res.data!.orderId}`);
     });
@@ -492,7 +494,10 @@ export function PaymentPanel({
             <p className="mt-2">{fmt(copy.pay_body, { number: placed.orderNumber })}</p>
             <p className="mt-4 text-4xl font-black">{formatCents(secret?.amountCents ?? placed.dueCents)}</p>
             {phase === "failed" && failure ? (
-              <p role="alert" className="mt-3 rounded-lg border-2 border-destructive p-3 text-sm font-semibold text-destructive">
+              <p
+                role="alert"
+                className="mt-3 rounded-lg border-2 border-destructive p-3 text-sm font-semibold text-destructive"
+              >
                 {fmt(copy.payment_failed, { reason: failure })}
               </p>
             ) : null}
@@ -551,7 +556,11 @@ export function PaymentPanel({
           </form>
         ) : null}
         <div className="flex justify-center">
-          <Button size="lg" variant={paid ? "default" : "outline"} onClick={() => router.push(`/orders/${placed.orderId}`)}>
+          <Button
+            size="lg"
+            variant={paid ? "default" : "outline"}
+            onClick={() => router.push(`/orders/${placed.orderId}`)}
+          >
             {copy.view_order}
           </Button>
         </div>

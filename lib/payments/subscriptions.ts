@@ -63,7 +63,9 @@ async function quantityFor(admin: Admin, householdId: string, allowanceUnit: str
  * client secret the Payment Element confirms (first invoice). Webhooks then
  * activate it (invoice.paid) and create the week allowances.
  */
-export async function startStripeSubscription(subscriptionId: string): Promise<{ clientSecret: string; amountCents: number }> {
+export async function startStripeSubscription(
+  subscriptionId: string,
+): Promise<{ clientSecret: string; amountCents: number }> {
   const admin = createAdminClient();
   const sub = must(
     await admin
@@ -89,7 +91,9 @@ export async function startStripeSubscription(subscriptionId: string): Promise<{
   const tax = (settings.data?.tax_settings ?? {}) as { enabled?: boolean; use_stripe_tax?: boolean };
 
   const stripeSub = sub.stripe_subscription_id
-    ? await stripe().subscriptions.retrieve(sub.stripe_subscription_id, { expand: ["latest_invoice.confirmation_secret"] })
+    ? await stripe().subscriptions.retrieve(sub.stripe_subscription_id, {
+        expand: ["latest_invoice.confirmation_secret"],
+      })
     : await stripe().subscriptions.create(
         {
           customer,
@@ -104,23 +108,23 @@ export async function startStripeSubscription(subscriptionId: string): Promise<{
         },
         { idempotencyKey: `subscription:${sub.id}` },
       );
-  must(
-    await admin
-      .from("subscriptions")
-      .update({ stripe_subscription_id: stripeSub.id, quantity })
-      .eq("id", sub.id),
-  );
+  must(await admin.from("subscriptions").update({ stripe_subscription_id: stripeSub.id, quantity }).eq("id", sub.id));
   const invoice = stripeSub.latest_invoice;
   const secret = typeof invoice === "object" && invoice ? invoice.confirmation_secret?.client_secret : null;
   if (!secret) throw new Error("Stripe didn't return a payment step for this plan.");
-  return { clientSecret: secret, amountCents: typeof invoice === "object" && invoice ? invoice.amount_due : sub.plans.price_cents * quantity };
+  return {
+    clientSecret: secret,
+    amountCents: typeof invoice === "object" && invoice ? invoice.amount_due : sub.plans.price_cents * quantity,
+  };
 }
 
 async function stripeSubscriptionFor(admin: Admin, subscriptionId: string) {
   const sub = must(
     await admin
       .from("subscriptions")
-      .select("id, household_id, stripe_subscription_id, quantity, plans ( price_cents, currency, billing_interval, allowance_unit )")
+      .select(
+        "id, household_id, stripe_subscription_id, quantity, plans ( price_cents, currency, billing_interval, allowance_unit )",
+      )
       .eq("id", subscriptionId)
       .single(),
   ) as unknown as {
@@ -128,14 +132,23 @@ async function stripeSubscriptionFor(admin: Admin, subscriptionId: string) {
     household_id: string;
     stripe_subscription_id: string | null;
     quantity: number;
-    plans: { price_cents: number; currency: string; billing_interval: "week" | "two_weeks" | "month"; allowance_unit: string };
+    plans: {
+      price_cents: number;
+      currency: string;
+      billing_interval: "week" | "two_weeks" | "month";
+      allowance_unit: string;
+    };
   };
   if (!sub.stripe_subscription_id) throw new Error("This plan isn't connected to Stripe yet.");
   return sub;
 }
 
 /** One week's worth of the plan's price (what a skipped week is worth). */
-export function weeklyValueCents(priceCents: number, quantity: number, interval: "week" | "two_weeks" | "month"): number {
+export function weeklyValueCents(
+  priceCents: number,
+  quantity: number,
+  interval: "week" | "two_weeks" | "month",
+): number {
   const perWeek = interval === "week" ? priceCents : interval === "two_weeks" ? priceCents / 2 : (priceCents * 12) / 52;
   return Math.round(perWeek * Math.max(quantity, 1));
 }
@@ -159,10 +172,22 @@ export async function applySkipCredit(subscriptionId: string, weekId: string, sk
     const cents = weeklyValueCents(sub.plans.price_cents, sub.quantity, sub.plans.billing_interval);
     const txn = await stripe().customers.createBalanceTransaction(
       customer,
-      { amount: -cents, currency: sub.plans.currency, description: "Skipped week credit", metadata: { subscription_id: sub.id, menu_week_id: weekId } },
+      {
+        amount: -cents,
+        currency: sub.plans.currency,
+        description: "Skipped week credit",
+        metadata: { subscription_id: sub.id, menu_week_id: weekId },
+      },
       { idempotencyKey: `skip-credit:${sub.id}:${weekId}` },
     );
-    must(await admin.rpc("stripe_set_skip_credit", { p_subscription: sub.id, p_week: weekId, p_txn: txn.id, p_cents: cents }));
+    must(
+      await admin.rpc("stripe_set_skip_credit", {
+        p_subscription: sub.id,
+        p_week: weekId,
+        p_txn: txn.id,
+        p_cents: cents,
+      }),
+    );
     return cents;
   }
   if (!skip && row?.skip_credit_txn_id) {
@@ -176,7 +201,9 @@ export async function applySkipCredit(subscriptionId: string, weekId: string, sk
       },
       { idempotencyKey: `skip-reverse:${sub.id}:${weekId}:${row.skip_credit_txn_id}` },
     );
-    must(await admin.rpc("stripe_set_skip_credit", { p_subscription: sub.id, p_week: weekId, p_txn: null, p_cents: 0 }));
+    must(
+      await admin.rpc("stripe_set_skip_credit", { p_subscription: sub.id, p_week: weekId, p_txn: null, p_cents: 0 }),
+    );
     return -(row.skip_credit_cents as number);
   }
   return 0;
@@ -202,7 +229,10 @@ export async function setCancelAtPeriodEnd(subscriptionId: string, cancel: boole
  * change applies from today and the next bill uses the new price; nothing is
  * charged or credited for the current period (explained before confirming).
  */
-export async function changePlanOrQuantity(subscriptionId: string, opts: { planId?: string; quantity?: number }): Promise<void> {
+export async function changePlanOrQuantity(
+  subscriptionId: string,
+  opts: { planId?: string; quantity?: number },
+): Promise<void> {
   const admin = createAdminClient();
   const sub = await stripeSubscriptionFor(admin, subscriptionId);
   const stripeSub = await stripe().subscriptions.retrieve(sub.stripe_subscription_id!);
@@ -223,7 +253,11 @@ export async function changePlanOrQuantity(subscriptionId: string, opts: { planI
 export async function customerPortalUrl(householdId: string, returnPath: string): Promise<string> {
   const admin = createAdminClient();
   const customer = await ensureHouseholdCustomer(householdId, admin);
-  const { data: settings } = await admin.from("site_settings").select("stripe_portal_configuration_id, business_name").eq("id", true).single();
+  const { data: settings } = await admin
+    .from("site_settings")
+    .select("stripe_portal_configuration_id, business_name")
+    .eq("id", true)
+    .single();
   let configuration = settings?.stripe_portal_configuration_id as string | null;
   if (!configuration) {
     const config = await stripe().billingPortal.configurations.create({
@@ -246,4 +280,3 @@ export async function customerPortalUrl(householdId: string, returnPath: string)
   });
   return session.url;
 }
-

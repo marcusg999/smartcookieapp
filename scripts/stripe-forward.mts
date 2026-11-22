@@ -66,7 +66,11 @@ for (;;) {
       if (!object) continue;
       const payload = JSON.stringify({ ...e, api_version: API_VERSION, data: { object } });
       const header = stripe.webhooks.generateTestHeaderString({ payload, secret });
-      const res = await fetch(url, { method: "POST", body: payload, headers: { "content-type": "application/json", "stripe-signature": header } });
+      const res = await fetch(url, {
+        method: "POST",
+        body: payload,
+        headers: { "content-type": "application/json", "stripe-signature": header },
+      });
       console.log(`${e.type} ${e.id} → ${res.status} ${await res.text()}`);
     }
   } catch (error) {

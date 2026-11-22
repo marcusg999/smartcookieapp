@@ -270,6 +270,46 @@ export function SettingsForm({ settings }: { settings: SettingsInput }) {
             </ChipToggle>
           ) : null}
         </div>
+        {s.tax_settings.enabled && !s.tax_settings.use_stripe_tax ? (
+          <Field id="tax-rate" label="Flat tax rate (%)" help="Applied to meals after discounts. Delivery isn't taxed.">
+            <Input
+              id="tax-rate"
+              type="number"
+              min={0}
+              max={20}
+              step={0.01}
+              value={((s.tax_settings.rate_bps ?? 0) / 100).toString()}
+              onChange={(e) =>
+                set("tax_settings", { ...s.tax_settings, rate_bps: Math.round(Number(e.target.value || 0) * 100) })
+              }
+              className="max-w-40"
+            />
+          </Field>
+        ) : null}
+        {s.tax_settings.use_stripe_tax ? (
+          <p className="rounded-xl border-2 border-ink bg-orange-tint p-3 text-sm">
+            Stripe Tax calculates tax from each delivery address. Prepared-food rules vary, so confirm your setup (tax
+            registrations, product tax code) with your accountant and in the Stripe dashboard before turning this on.
+          </p>
+        ) : null}
+      </Section>
+
+      <Section title="Refunds">
+        <Field
+          id="ops-refund-limit"
+          label="Largest refund ops staff can issue ($)"
+          help="Owners can refund any amount. Changing this asks for your authenticator code."
+        >
+          <Input
+            id="ops-refund-limit"
+            type="number"
+            min={0}
+            step={1}
+            value={(s.ops_refund_limit_cents / 100).toString()}
+            onChange={(e) => set("ops_refund_limit_cents", Math.round(Number(e.target.value || 0) * 100))}
+            className="max-w-40"
+          />
+        </Field>
       </Section>
 
       <UnsavedBar

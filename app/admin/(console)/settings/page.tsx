@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const colors = (s?.brand_colors ?? {}) as Record<string, string>;
   const social = (s?.social_links ?? {}) as Record<string, string>;
   const ann = (s?.announcement ?? {}) as { enabled?: boolean; text?: string; link?: string | null };
-  const tax = (s?.tax_settings ?? {}) as { enabled?: boolean; use_stripe_tax?: boolean };
+  const tax = (s?.tax_settings ?? {}) as { enabled?: boolean; use_stripe_tax?: boolean; rate_bps?: number };
   const settings: SettingsInput = {
     business_name: s?.business_name ?? "Smart Cookie",
     contact_email: s?.contact_email ?? "",
@@ -34,7 +34,8 @@ export default async function SettingsPage() {
     ordering_enabled: s?.ordering_enabled ?? true,
     ordering_paused_message: s?.ordering_paused_message ?? "",
     pilot_mode: s?.pilot_mode ?? false,
-    tax_settings: { enabled: !!tax.enabled, use_stripe_tax: !!tax.use_stripe_tax },
+    tax_settings: { enabled: !!tax.enabled, use_stripe_tax: !!tax.use_stripe_tax, rate_bps: tax.rate_bps ?? 0 },
+    ops_refund_limit_cents: s?.ops_refund_limit_cents ?? 5000,
     logo_path: s?.logo_path ?? null,
   };
   return (

@@ -63,7 +63,9 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             testMode={stripeMockMode()}
             returnUrl={new URL(`/checkout?order=${order.id}`, publicEnv.NEXT_PUBLIC_SITE_URL).toString()}
             redirected={
-              sp.redirect_status === "succeeded" || sp.redirect_status === "processing" || typeof sp.payment_intent === "string"
+              sp.redirect_status === "succeeded" ||
+              sp.redirect_status === "processing" ||
+              typeof sp.payment_intent === "string"
             }
           />
         </div>

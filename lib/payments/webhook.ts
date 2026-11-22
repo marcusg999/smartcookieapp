@@ -33,7 +33,8 @@ function must(res: { error: { message: string } | null }) {
 /** Subscription id + our row id from an invoice (current API: invoice.parent.subscription_details). */
 function invoiceSubscription(invoice: Stripe.Invoice) {
   const details = invoice.parent?.subscription_details ?? null;
-  const stripeSub = typeof details?.subscription === "string" ? details.subscription : (details?.subscription?.id ?? null);
+  const stripeSub =
+    typeof details?.subscription === "string" ? details.subscription : (details?.subscription?.id ?? null);
   const ours = details?.metadata?.subscription_id ?? null;
   const line = invoice.lines?.data?.[0];
   return { stripeSub, ours, periodStart: ts(line?.period?.start), periodEnd: ts(line?.period?.end) };
@@ -101,7 +102,9 @@ export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps):
       const charge = event.data.object;
       const pi = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
       if (!pi) return "ignored";
-      must(await admin.rpc("stripe_payment_refunded", { p_payment_intent: pi, p_refunded_total: charge.amount_refunded }));
+      must(
+        await admin.rpc("stripe_payment_refunded", { p_payment_intent: pi, p_refunded_total: charge.amount_refunded }),
+      );
       return "refunded";
     }
     case "refund.created":
@@ -110,8 +113,20 @@ export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps):
       const refund = event.data.object;
       const row = refund.metadata?.refund_row;
       if (!row) return "ignored";
-      const status = refund.status === "succeeded" ? "succeeded" : refund.status === "failed" || refund.status === "canceled" ? "failed" : "pending";
-      must(await admin.rpc("stripe_record_refund", { p_refund: row, p_stripe_refund: refund.id, p_status: status, p_error: refund.failure_reason ?? null }));
+      const status =
+        refund.status === "succeeded"
+          ? "succeeded"
+          : refund.status === "failed" || refund.status === "canceled"
+            ? "failed"
+            : "pending";
+      must(
+        await admin.rpc("stripe_record_refund", {
+          p_refund: row,
+          p_stripe_refund: refund.id,
+          p_status: status,
+          p_error: refund.failure_reason ?? null,
+        }),
+      );
       return status;
     }
     case "checkout.session.completed":

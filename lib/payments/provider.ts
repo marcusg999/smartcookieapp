@@ -14,9 +14,7 @@ import * as stripeSubs from "./subscriptions";
  * total itself (CLAUDE.md §5.8).
  */
 export type OrderPaymentStep =
-  | { kind: "paid" }
-  | { kind: "nothing_due" }
-  | { kind: "client_secret"; clientSecret: string; amountCents: number };
+  { kind: "paid" } | { kind: "nothing_due" } | { kind: "client_secret"; clientSecret: string; amountCents: number };
 
 export type ChangeStep =
   | { kind: "settled" }
@@ -24,7 +22,8 @@ export type ChangeStep =
   | { kind: "refunded"; amountCents: number }
   | { kind: "client_secret"; clientSecret: string; amountCents: number };
 
-export type SubscriptionStep = { kind: "active" } | { kind: "client_secret"; clientSecret: string; amountCents: number };
+export type SubscriptionStep =
+  { kind: "active" } | { kind: "client_secret"; clientSecret: string; amountCents: number };
 
 export interface PaymentProvider {
   readonly name: "mock" | "stripe";
@@ -44,7 +43,9 @@ const stripeProvider: PaymentProvider = {
   name: "stripe",
   async startOrderPayment(orderId) {
     const r = await stripePay.startOrderPayment(orderId);
-    return r.status === "nothing_due" ? { kind: "nothing_due" } : { kind: "client_secret", clientSecret: r.clientSecret, amountCents: r.amountCents };
+    return r.status === "nothing_due"
+      ? { kind: "nothing_due" }
+      : { kind: "client_secret", clientSecret: r.clientSecret, amountCents: r.amountCents };
   },
   async settleOrderChange(orderId, requestedBy) {
     const r = await stripePay.settleOrderChange(orderId, requestedBy);
@@ -113,7 +114,12 @@ const mockProvider: PaymentProvider = {
     }
     const { data: row } = await admin
       .from("order_refunds")
-      .insert({ order_id: orderId, amount_cents: -due, reason: "Order changed before cutoff", requested_by: requestedBy })
+      .insert({
+        order_id: orderId,
+        amount_cents: -due,
+        reason: "Order changed before cutoff",
+        requested_by: requestedBy,
+      })
       .select("id")
       .single();
     if (row) await this.executeRefund(row.id);
@@ -133,20 +139,41 @@ const mockProvider: PaymentProvider = {
     for (const p of pays ?? []) {
       const take = Math.min(p.amount_cents - p.refunded_cents, left);
       if (take <= 0) continue;
-      await admin.rpc("stripe_payment_refunded", { p_payment_intent: p.stripe_payment_intent_id, p_refunded_total: p.refunded_cents + take });
+      await admin.rpc("stripe_payment_refunded", {
+        p_payment_intent: p.stripe_payment_intent_id,
+        p_refunded_total: p.refunded_cents + take,
+      });
       left -= take;
     }
-    await admin.rpc("stripe_record_refund", { p_refund: refundId, p_stripe_refund: `re_mock_${refundId.slice(0, 8)}`, p_status: "succeeded", p_error: null });
+    await admin.rpc("stripe_record_refund", {
+      p_refund: refundId,
+      p_stripe_refund: `re_mock_${refundId.slice(0, 8)}`,
+      p_status: "succeeded",
+      p_error: null,
+    });
   },
   async startSubscription(subscriptionId) {
     const admin = createAdminClient();
-    const { data: sub } = await admin.from("subscriptions").select("id, status, plans ( billing_interval )").eq("id", subscriptionId).maybeSingle();
+    const { data: sub } = await admin
+      .from("subscriptions")
+      .select("id, status, plans ( billing_interval )")
+      .eq("id", subscriptionId)
+      .maybeSingle();
     if (!sub || sub.status !== "incomplete") throw new Error("This plan can't be started.");
-    const interval = ((sub as unknown as { plans: { billing_interval: keyof typeof INTERVAL_DAYS } }).plans?.billing_interval ?? "week") as keyof typeof INTERVAL_DAYS;
+    const interval = ((sub as unknown as { plans: { billing_interval: keyof typeof INTERVAL_DAYS } }).plans
+      ?.billing_interval ?? "week") as keyof typeof INTERVAL_DAYS;
     const now = new Date();
     const end = new Date(now.getTime() + INTERVAL_DAYS[interval] * 86_400_000);
-    await admin.from("subscriptions").update({ stripe_subscription_id: `sub_mock_${subscriptionId.replace(/-/g, "").slice(0, 16)}` }).eq("id", subscriptionId);
-    await admin.rpc("stripe_invoice_paid", { p_subscription: subscriptionId, p_stripe_subscription: null, p_period_start: now.toISOString(), p_period_end: end.toISOString() });
+    await admin
+      .from("subscriptions")
+      .update({ stripe_subscription_id: `sub_mock_${subscriptionId.replace(/-/g, "").slice(0, 16)}` })
+      .eq("id", subscriptionId);
+    await admin.rpc("stripe_invoice_paid", {
+      p_subscription: subscriptionId,
+      p_stripe_subscription: null,
+      p_period_start: now.toISOString(),
+      p_period_end: end.toISOString(),
+    });
     return { kind: "active" };
   },
   async applySkipCredit() {

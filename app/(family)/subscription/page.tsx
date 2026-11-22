@@ -21,7 +21,9 @@ export default async function SubscriptionPage() {
     getOrderableWeeks(),
   ]);
   const tz = settings?.timezone ?? "America/Los_Angeles";
-  const [sub, kids] = household ? await Promise.all([getSubscription(household.id), getChildren(household.id)]) : [null, []];
+  const [sub, kids] = household
+    ? await Promise.all([getSubscription(household.id), getChildren(household.id)])
+    : [null, []];
   const supabase = await createClient();
   const { data: allowances } = sub
     ? await supabase.from("subscription_allowances").select("menu_week_id, skipped").eq("subscription_id", sub.id)
