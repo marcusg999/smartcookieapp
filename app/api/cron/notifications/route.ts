@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const { data: queued } = await admin
     .from("notifications_log")
-    .select("id, to_address, template_key, payload")
+    .select("id, to_address, template_key, payload, household_id")
     .eq("status", "queued")
     .order("sent_at")
     .limit(50);
@@ -46,7 +46,15 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (!claimed) continue;
     const payload = (n.payload ?? {}) as { order_id?: string; week_start?: string };
+    const { data: who } = n.household_id
+      ? await admin.from("households").select("primary_user_id").eq("id", n.household_id).maybeSingle()
+      : { data: null };
+    const { data: profile } = who?.primary_user_id
+      ? await admin.from("profiles").select("full_name").eq("id", who.primary_user_id).maybeSingle()
+      : { data: null };
     const vars: Record<string, string> = {
+      first_name: (profile?.full_name as string | null)?.split(" ")[0] ?? "there",
+      update_card_url: new URL("/subscription?billing=1", env.NEXT_PUBLIC_SITE_URL).toString(),
       week_of: payload.week_start ? formatDay(payload.week_start, { month: "short", day: "numeric" }) : "",
     };
     if (payload.order_id) {

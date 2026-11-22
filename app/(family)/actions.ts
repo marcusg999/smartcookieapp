@@ -843,3 +843,17 @@ export async function openBillingPortal(): Promise<ActionResult<{ url: string | 
     }
   });
 }
+
+/** The household's newest plan status (the plan "processing" screen polls this). */
+export async function planStatus(): Promise<ActionResult<{ status: string | null }>> {
+  return familyAction({ schema: z.undefined(), input: undefined }, async (_d, { supabase, householdId }) => {
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("household_id", householdId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { ok: true, data: { status: (data?.status as string | null) ?? null } };
+  });
+}

@@ -128,9 +128,12 @@ export async function startOrderPayment(orderId: string): Promise<PaymentStart> 
       amount: due,
       currency: order.currency as string,
       customer,
-      // Dynamic payment methods (cards, Link, Apple Pay, Google Pay) come from
-      // Dashboard settings; payment_method_types is no longer a parameter.
-      automatic_payment_methods: { enabled: true },
+      // Dynamic payment methods narrowed to card + Link (Apple Pay and Google
+      // Pay are card wallets, so they stay). In this API version
+      // payment_method_types is gone and allowed_payment_method_types replaces
+      // automatic_payment_methods (Stripe rejects both together). Buy-now-pay-
+      // later methods enabled in the Dashboard are deliberately left out.
+      allowed_payment_method_types: ["card", "link"],
       setup_future_usage: "off_session",
       description: `Smart Cookie order ${order.order_number}`,
       metadata: {

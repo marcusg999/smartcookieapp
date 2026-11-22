@@ -95,7 +95,7 @@ export async function startStripeSubscription(subscriptionId: string): Promise<{
           customer,
           items: [{ price, quantity }],
           payment_behavior: "default_incomplete",
-          payment_settings: { save_default_payment_method: "on_subscription" },
+          payment_settings: { save_default_payment_method: "on_subscription", payment_method_types: ["card", "link"] },
           expand: ["latest_invoice.confirmation_secret"],
           // Read back by the webhook (also copied onto invoices), so events
           // that arrive before our row has the Stripe id still find it.

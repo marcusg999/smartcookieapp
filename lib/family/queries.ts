@@ -19,6 +19,7 @@ export type Household = {
   ordering_preference: "a_la_carte" | "subscription" | null;
   preferred_plan_id: string | null;
   default_address_id: string | null;
+  stripe_customer_id: string | null;
 };
 
 export type Child = {
@@ -76,6 +77,8 @@ export type Plan = {
 export type Subscription = {
   id: string;
   status: string;
+  quantity: number;
+  payment_failed_at: string | null;
   paused_until: string | null;
   cancel_at_period_end: boolean;
   current_period_end: string | null;
@@ -101,7 +104,7 @@ export const getHousehold = cache(async (): Promise<Household | null> => {
   if (!member) return null;
   const { data } = await supabase
     .from("households")
-    .select("id, name, onboarded_at, ordering_preference, preferred_plan_id, default_address_id")
+    .select("id, name, onboarded_at, ordering_preference, preferred_plan_id, default_address_id, stripe_customer_id")
     .eq("id", member.household_id)
     .maybeSingle();
   return (data as Household | null) ?? null;
@@ -190,7 +193,7 @@ export const getSubscription = cache(async (householdId: string): Promise<Subscr
   const { data } = await supabase
     .from("subscriptions")
     .select(
-      `id, status, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans ( ${PLAN_COLUMNS} )`,
+      `id, status, quantity, payment_failed_at, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans ( ${PLAN_COLUMNS} )`,
     )
     .eq("household_id", householdId)
     .in("status", ["active", "trialing", "past_due", "paused"])

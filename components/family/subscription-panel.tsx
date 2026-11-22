@@ -1,16 +1,26 @@
 "use client";
 
-import { Check, Loader2 } from "lucide-react";
+import { Check, CreditCard, Loader2, TriangleAlert, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { changePlan, changeSubscription, choosePlan, setWeekSkip } from "@/app/(family)/actions";
+import {
+  changePlan,
+  changeSubscription,
+  choosePlan,
+  openBillingPortal,
+  planStatus,
+  setWeekSkip,
+  syncPlanQuantity,
+} from "@/app/(family)/actions";
+import { formatCents } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 import { fmt, type Copy } from "./kit";
+import { StripePayment } from "./stripe-payment";
 
 export type PlanCard = {
   id: string;
@@ -30,6 +40,9 @@ type Sub = {
   nextBillLabel: string | null;
   pendingPlanName: string | null;
   allowPause: boolean;
+  quantity: number;
+  perChild: boolean;
+  pastDue: boolean;
 };
 
 export function SubscriptionPanel({
@@ -39,6 +52,10 @@ export function SubscriptionPanel({
   weeks,
   minPause,
   maxPause,
+  kidsCount,
+  checkoutCopy,
+  returnUrl,
+  hasStripeCustomer,
 }: {
   copy: Copy;
   plans: PlanCard[];
@@ -46,6 +63,10 @@ export function SubscriptionPanel({
   weeks: { id: string; label: string; skipped: boolean; canSkip: boolean }[];
   minPause: string;
   maxPause: string;
+  kidsCount: number;
+  checkoutCopy: Copy;
+  returnUrl: string;
+  hasStripeCustomer: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -58,8 +79,104 @@ export function SubscriptionPanel({
       router.refresh();
     });
 
+  const [pay, setPay] = useState<{ clientSecret: string; amountCents: number } | null>(null);
+  const [processing, setProcessing] = useState(false);
+
+  const startPlan = (planId: string) =>
+    start(async () => {
+      const res = await choosePlan({ planId });
+      if (!res.ok) return void toast.error(res.message);
+      if (res.data?.kind === "client_secret") {
+        setPay({ clientSecret: res.data.clientSecret!, amountCents: res.data.amountCents! });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        toast.success(copy.started);
+        router.refresh();
+      }
+    });
+
+  const billing = () =>
+    start(async () => {
+      const res = await openBillingPortal();
+      if (!res.ok) return void toast.error(res.message);
+      if (res.data?.url) window.location.assign(res.data.url);
+    });
+
+  // After the first payment: wait for Stripe's webhook to activate the plan.
+  useEffect(() => {
+    if (!processing) return;
+    let tries = 0;
+    const id = setInterval(async () => {
+      tries++;
+      const res = await planStatus();
+      const active = res.ok && res.data?.status === "active";
+      if (active || tries > 40) {
+        clearInterval(id);
+        setProcessing(false);
+        setPay(null);
+        if (active) toast.success(copy.started);
+        router.refresh();
+      }
+    }, 1500);
+    return () => clearInterval(id);
+  }, [processing, router, copy.started]);
+
   return (
     <div className="space-y-8">
+      {pay ? (
+        <section aria-labelledby="pay-h" className="rounded-2xl border-2 border-ink bg-paper p-6 shadow-ink-lg">
+          {processing ? (
+            <div role="status" className="text-center">
+              <Loader2 aria-hidden="true" className="mx-auto size-10 animate-spin" />
+              <h2 id="pay-h" className="mt-3 text-2xl font-black">
+                {copy.processing}
+              </h2>
+            </div>
+          ) : (
+            <>
+              <h2 id="pay-h" className="text-3xl font-black">
+                {copy.pay_title}
+              </h2>
+              <p className="mt-2">{fmt(copy.pay_body, { amount: formatCents(pay.amountCents) })}</p>
+              <div className="mt-5">
+                <StripePayment
+                  clientSecret={pay.clientSecret}
+                  amountLabel={fmt(checkoutCopy.pay_button, { amount: formatCents(pay.amountCents) })}
+                  returnUrl={returnUrl}
+                  copy={checkoutCopy}
+                  onConfirmed={() => setProcessing(true)}
+                />
+              </div>
+            </>
+          )}
+        </section>
+      ) : null}
+      {sub?.pastDue ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-destructive bg-paper p-4">
+          <p className="flex items-center gap-2 font-bold text-destructive">
+            <TriangleAlert aria-hidden="true" className="size-5" /> {copy.past_due_banner}
+          </p>
+          <Button variant="destructive" disabled={pending} onClick={billing}>
+            {copy.update_card}
+          </Button>
+        </div>
+      ) : null}
+      {sub && sub.perChild && sub.quantity !== kidsCount && kidsCount > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-orange-tint p-4">
+          <p className="flex items-center gap-2 font-semibold">
+            <Users aria-hidden="true" className="size-5" /> {fmt(copy.quantity_mismatch, { count: sub.quantity, kids: kidsCount })}
+          </p>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => {
+              if (confirm(copy.quantity_explain)) run(() => syncPlanQuantity({ subscriptionId: sub.id }));
+            }}
+          >
+            {fmt(copy.sync_quantity, { kids: kidsCount })}
+          </Button>
+        </div>
+      ) : null}
       {sub ? (
         <section className="rounded-2xl border-2 border-ink bg-orange p-5 shadow-ink-lg">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -151,7 +268,16 @@ export function SubscriptionPanel({
                     size="sm"
                     variant={w.skipped ? "secondary" : "outline"}
                     disabled={pending}
-                    onClick={() => run(() => setWeekSkip({ subscriptionId: sub.id, weekId: w.id, skip: !w.skipped }))}
+                    onClick={() =>
+                      start(async () => {
+                        const res = await setWeekSkip({ subscriptionId: sub.id, weekId: w.id, skip: !w.skipped });
+                        if (!res.ok) return void toast.error(res.message);
+                        const cents = res.data?.creditCents ?? 0;
+                        if (cents > 0) toast.success(fmt(copy.skip_credit, { amount: formatCents(cents) }));
+                        if (cents < 0) toast.success(fmt(copy.unskip_debit, { amount: formatCents(-cents) }));
+                        router.refresh();
+                      })
+                    }
                   >
                     {w.skipped ? copy.unskip_week : copy.skip_week}
                   </Button>
@@ -197,13 +323,10 @@ export function SubscriptionPanel({
                   <Button
                     className="mt-4"
                     disabled={pending}
-                    onClick={() =>
-                      run(
-                        () =>
-                          sub ? changePlan({ subscriptionId: sub.id, planId: p.id }) : choosePlan({ planId: p.id }),
-                        sub ? undefined : copy.started,
-                      )
-                    }
+                    onClick={() => {
+                      if (!sub) return startPlan(p.id);
+                      if (confirm(copy.change_explain)) run(() => changePlan({ subscriptionId: sub.id, planId: p.id }));
+                    }}
                   >
                     {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
                     {sub ? copy.change : copy.start}
@@ -213,7 +336,14 @@ export function SubscriptionPanel({
             );
           })}
         </ul>
-        <p className="mt-3 text-sm text-muted-foreground">{copy.billing_note}</p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {hasStripeCustomer ? (
+            <Button variant="outline" disabled={pending} onClick={billing}>
+              <CreditCard aria-hidden="true" /> {copy.manage_billing}
+            </Button>
+          ) : null}
+          <p className="text-sm text-muted-foreground">{copy.billing_note}</p>
+        </div>
       </section>
     </div>
   );

@@ -22,7 +22,8 @@
     "db:test": "supabase test db",
     "owner:bootstrap": "node --env-file-if-exists=.env.local scripts/owner-bootstrap.mts",
     "db:erd": "bash scripts/generate-erd.sh",
-    "content:seed": "node scripts/gen-content-seed.mts"
+    "content:seed": "node scripts/gen-content-seed.mts",
+    "stripe:forward": "NODE_USE_ENV_PROXY=1 node --env-file-if-exists=.env.local scripts/stripe-forward.mts"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.16.0",

@@ -26,6 +26,9 @@ export function stripe(): Stripe {
   client ??= new Stripe(env.STRIPE_SECRET_KEY, {
     apiVersion: STRIPE_API_VERSION,
     maxNetworkRetries: 2,
+    // fetch-based transport: same behaviour on Vercel, and it honours an HTTPS
+    // proxy where one is required (NODE_USE_ENV_PROXY=1).
+    httpClient: Stripe.createFetchHttpClient(),
     appInfo: { name: "Smart Cookie" },
   });
   return client;
