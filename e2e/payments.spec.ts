@@ -184,3 +184,42 @@ test("declined card (insufficient funds): clear error, order stays unpaid", asyn
   await expect(page.getByRole("alert").filter({ hasText: /insufficient funds/i })).toBeVisible({ timeout: 60_000 });
   expect((await orderFor(fam.householdId)).status).toBe("pending_payment");
 });
+
+test("changing a paid order before cutoff: more → charged off-session, less → refunded", async ({ page, baseURL }) => {
+  const fam = await familyWithCart();
+  await checkoutToPayment(page, fam.email, fam.weekId);
+  const order = await orderFor(fam.householdId);
+  const back = `${baseURL}/checkout?order=${order.id}`;
+  await confirmWith(order.id, "pm_card_visa", back);
+  await page.goto(`${back}&redirect_status=succeeded`);
+  await expect(page.getByRole("heading", { name: "You're all set!" })).toBeVisible({ timeout: 60_000 });
+  const paidTotal = (await orderFor(fam.householdId)).total_cents;
+
+  // Add one more meal through "Change order".
+  await page.goto(`/orders/${order.id}`);
+  await page.getByRole("button", { name: "Change order" }).click();
+  await expect(page).toHaveURL(/\/order\?week=/);
+  await page.getByRole("button", { name: /^Add: / }).first().click();
+  await page.getByRole("link", { name: "Review & check out" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "All correct, place order" }).click();
+  await expect(page.getByText(/We charged \$\d+\.\d\d for your changes/)).toBeVisible({ timeout: 60_000 });
+  await expect.poll(async () => (await orderFor(fam.householdId)).status, { timeout: 60_000 }).toBe("paid");
+  const afterAdd = await orderFor(fam.householdId);
+  expect(afterAdd.total_cents).toBeGreaterThan(paidTotal);
+  expect(afterAdd.amount_paid_cents).toBe(afterAdd.total_cents); // the top-up was charged off-session
+
+  // Remove a meal → the difference is refunded.
+  await page.goto(`/orders/${order.id}`);
+  await page.getByRole("button", { name: "Change order" }).click();
+  await page.getByRole("button", { name: /^Remove: / }).first().click();
+  await page.getByRole("link", { name: "Review & check out" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "All correct, place order" }).click();
+  await expect(page.getByText(/We refunded \$\d+\.\d\d/)).toBeVisible({ timeout: 60_000 });
+  const pis = await admin.from("order_payments").select("stripe_payment_intent_id").eq("order_id", order.id);
+  const refunds = await Promise.all((pis.data ?? []).map((p) => stripe.refunds.list({ payment_intent: p.stripe_payment_intent_id })));
+  expect(refunds.flatMap((r) => r.data).length).toBeGreaterThan(0);
+});
