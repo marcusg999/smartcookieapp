@@ -70,7 +70,7 @@ export async function startStripeSubscription(
   const sub = must(
     await admin
       .from("subscriptions")
-      .select("id, household_id, plan_id, status, stripe_subscription_id, plans ( allowance_unit, price_cents )")
+      .select("id, household_id, plan_id, status, stripe_subscription_id, plans!subscriptions_plan_id_fkey ( allowance_unit, price_cents )")
       .eq("id", subscriptionId)
       .single(),
   ) as unknown as {
@@ -123,7 +123,7 @@ async function stripeSubscriptionFor(admin: Admin, subscriptionId: string) {
     await admin
       .from("subscriptions")
       .select(
-        "id, household_id, stripe_subscription_id, quantity, plans ( price_cents, currency, billing_interval, allowance_unit )",
+        "id, household_id, stripe_subscription_id, quantity, plans!subscriptions_plan_id_fkey ( price_cents, currency, billing_interval, allowance_unit )",
       )
       .eq("id", subscriptionId)
       .single(),

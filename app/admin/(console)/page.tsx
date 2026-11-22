@@ -81,7 +81,7 @@ export default async function AdminDashboardPage() {
           .gte("created_at", since(monthStart < monday ? monthStart : monday)),
         supabase
           .from("subscriptions")
-          .select("quantity, plans ( price_cents, billing_interval )")
+          .select("quantity, plans!subscriptions_plan_id_fkey ( price_cents, billing_interval )")
           .in("status", ["active", "trialing"]),
         supabase
           .from("orders")

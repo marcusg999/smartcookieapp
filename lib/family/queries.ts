@@ -193,7 +193,7 @@ export const getSubscription = cache(async (householdId: string): Promise<Subscr
   const { data } = await supabase
     .from("subscriptions")
     .select(
-      `id, status, quantity, payment_failed_at, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans ( ${PLAN_COLUMNS} )`,
+      `id, status, quantity, payment_failed_at, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans!subscriptions_plan_id_fkey ( ${PLAN_COLUMNS} )`,
     )
     .eq("household_id", householdId)
     .in("status", ["active", "trialing", "past_due", "paused"])

@@ -156,7 +156,7 @@ const mockProvider: PaymentProvider = {
     const admin = createAdminClient();
     const { data: sub } = await admin
       .from("subscriptions")
-      .select("id, status, plans ( billing_interval )")
+      .select("id, status, plans!subscriptions_plan_id_fkey ( billing_interval )")
       .eq("id", subscriptionId)
       .maybeSingle();
     if (!sub || sub.status !== "incomplete") throw new Error("This plan can't be started.");

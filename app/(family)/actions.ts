@@ -839,7 +839,7 @@ export async function syncPlanQuantity(input: unknown): Promise<ActionResult<{ q
       // RLS: only this household's subscription is visible.
       const { data: sub } = await supabase
         .from("subscriptions")
-        .select("id, plans ( allowance_unit )")
+        .select("id, plans!subscriptions_plan_id_fkey ( allowance_unit )")
         .eq("id", subscriptionId)
         .maybeSingle();
       if (!sub) return fail("validation", "Subscription not found.");
