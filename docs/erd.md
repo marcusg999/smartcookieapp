@@ -1,6 +1,6 @@
 # Entity-relationship diagram
 
-Generated from the database by `pnpm db:erd` (2026-11-21). Do not edit by hand.
+Generated from the database by `pnpm db:erd` (2026-11-22). Do not edit by hand.
 Every table has Row Level Security enabled; see `supabase/migrations` and `docs/phase-3.md`.
 
 ```mermaid
@@ -372,6 +372,33 @@ erDiagram
     uuid allergy_override_id FK
     timestamptz created_at
   }
+  order_payments {
+    uuid id PK
+    uuid order_id FK
+    text stripe_payment_intent_id
+    text kind
+    integer amount_cents
+    text currency
+    text status
+    integer refunded_cents
+    text last_error
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  order_refunds {
+    uuid id PK
+    uuid order_id FK
+    integer amount_cents
+    text currency
+    text reason
+    array order_item_ids
+    text status
+    text stripe_refund_id
+    text error
+    uuid requested_by FK
+    timestamptz created_at
+    timestamptz updated_at
+  }
   orders {
     uuid id PK
     text order_number
@@ -399,6 +426,13 @@ erDiagram
     text notes
     timestamptz created_at
     timestamptz updated_at
+    integer credit_cents
+    integer amount_paid_cents
+    integer amount_refunded_cents
+    integer payment_version
+    timestamptz expires_at
+    timestamptz payment_failed_at
+    text last_payment_error
   }
   organizations {
     uuid id PK
@@ -518,6 +552,8 @@ erDiagram
     timestamptz updated_at
     uuid updated_by FK
     text ordering_paused_message
+    integer ops_refund_limit_cents
+    text stripe_portal_configuration_id
   }
   standing_orders {
     uuid id PK
@@ -544,6 +580,8 @@ erDiagram
     timestamptz received_at
     timestamptz processed_at
     text error
+    timestamptz locked_at
+    integer attempts
   }
   subscription_allowances {
     uuid id PK
@@ -555,6 +593,8 @@ erDiagram
     integer snacks_used
     integer rolled_over_in
     boolean skipped
+    text skip_credit_txn_id
+    integer skip_credit_cents
   }
   subscriptions {
     uuid id PK
@@ -571,6 +611,8 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
     uuid pending_plan_id FK
+    timestamptz stripe_event_at
+    timestamptz payment_failed_at
   }
   testimonials {
     uuid id PK
@@ -638,6 +680,8 @@ erDiagram
   classrooms ||--o{ order_items : "classroom_id"
   menu_items ||--o{ order_items : "menu_item_id"
   orders ||--o{ order_items : "order_id"
+  orders ||--o{ order_payments : "order_id"
+  orders ||--o{ order_refunds : "order_id"
   delivery_zones ||--o{ orders : "delivery_zone_id"
   households ||--o{ orders : "household_id"
   menu_weeks ||--o{ orders : "menu_week_id"

@@ -16,7 +16,10 @@ test.describe.configure({ mode: "parallel" });
 const MOCK = /^(sk|rk)_test_(ci_)?dummy$/.test(process.env.STRIPE_SECRET_KEY ?? "");
 const stripe = MOCK
   ? null
-  : new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-11-18.endive", httpClient: Stripe.createFetchHttpClient() });
+  : new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: "2026-11-18.endive",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
 
 /** A paid $20 order. Real mode: a real succeeded PaymentIntent (test card). */
 async function paidOrder() {
@@ -25,7 +28,14 @@ async function paidOrder() {
   const { data: week } = await admin.from("menu_weeks").select("id").eq("status", "published").limit(1).single();
   const { data: order } = await admin
     .from("orders")
-    .insert({ household_id: hm!.household_id, menu_week_id: week!.id, status: "pending_payment", subtotal_cents: 2000, total_cents: 2000, placed_at: new Date().toISOString() })
+    .insert({
+      household_id: hm!.household_id,
+      menu_week_id: week!.id,
+      status: "pending_payment",
+      subtotal_cents: 2000,
+      total_cents: 2000,
+      placed_at: new Date().toISOString(),
+    })
     .select("id")
     .single();
   let pi = `pi_mock_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -40,7 +50,13 @@ async function paidOrder() {
     });
     pi = intent.id;
   }
-  await admin.rpc("stripe_record_payment_intent", { p_order: order!.id, p_payment_intent: pi, p_kind: "charge", p_amount: 2000, p_currency: "usd" });
+  await admin.rpc("stripe_record_payment_intent", {
+    p_order: order!.id,
+    p_payment_intent: pi,
+    p_kind: "charge",
+    p_amount: 2000,
+    p_currency: "usd",
+  });
   await admin.rpc("stripe_payment_succeeded", { p_payment_intent: pi, p_amount_received: 2000 });
   return { orderId: order!.id as string, pi };
 }
@@ -76,7 +92,12 @@ test("ops refunds part of an order within their limit; it shows on the order and
   await refund(page, secret, "5", "One meal arrived cold");
   await expect(page.getByText("Refunded $5.00.")).toBeVisible({ timeout: 30_000 });
   await expect
-    .poll(async () => (await admin.from("orders").select("amount_refunded_cents").eq("id", orderId).single()).data?.amount_refunded_cents, { timeout: 30_000 })
+    .poll(
+      async () =>
+        (await admin.from("orders").select("amount_refunded_cents").eq("id", orderId).single()).data
+          ?.amount_refunded_cents,
+      { timeout: 30_000 },
+    )
     .toBe(500);
   if (stripe) {
     const refunds = await stripe.refunds.list({ payment_intent: pi });

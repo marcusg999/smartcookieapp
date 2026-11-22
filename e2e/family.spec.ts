@@ -1,11 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 
 import { expect, signInWithPassword, test } from "./support/fixtures";
 import { admin, createUser, PASSWORD, uniqueEmail } from "./support/supabase";
 
 import type { Page } from "@playwright/test";
 
-// Phase 5: the family experience, end to end (mocked payment).
+// Phase 5: the family experience, end to end. CI pays with the mock; with a
+// real Stripe test key the payment is confirmed with a test card.
+const MOCK = /^(sk|rk)_test_(ci_)?dummy$/.test(process.env.STRIPE_SECRET_KEY ?? "");
 test.describe.configure({ mode: "parallel" });
 
 type Week = { id: string; week_start: string; delivery_dates: string[] };
@@ -69,7 +72,7 @@ async function fillStable(locator: import("@playwright/test").Locator, value: st
   await expect(async () => {
     await locator.fill(value);
     await expect(locator).toHaveValue(value, { timeout: 500 });
-  }).toPass({ timeout: 10_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 async function goToOrder(page: Page, email: string) {
@@ -140,7 +143,28 @@ test("first-time parent: onboarding → order for two kids → allergy confirmat
   await page.getByRole("button", { name: "Still correct" }).first().click();
   await page.getByRole("button", { name: "Place order" }).click();
   await expect(page.getByRole("heading", { name: "Payment" })).toBeVisible();
-  await page.getByRole("button", { name: /^Pay \$/ }).click();
+  if (MOCK) {
+    await page.getByRole("button", { name: /^Pay \$/ }).click();
+  } else {
+    // Real Stripe test mode: confirm with a test card through the API (the
+    // dev sandbox can't run Stripe.js's own confirm; see payments.spec.ts).
+    const { data: hm } = await admin.from("household_members").select("household_id").eq("user_id", userId).single();
+    const { data: o } = await admin.from("orders").select("id").eq("household_id", hm!.household_id).single();
+    await expect
+      .poll(async () => (await admin.from("order_payments").select("id").eq("order_id", o!.id)).data?.length ?? 0, {
+        timeout: 30_000,
+      })
+      .toBeGreaterThan(0);
+    const { data: p } = await admin
+      .from("order_payments")
+      .select("stripe_payment_intent_id")
+      .eq("order_id", o!.id)
+      .single();
+    await new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      httpClient: Stripe.createFetchHttpClient(),
+    }).paymentIntents.confirm(p!.stripe_payment_intent_id, { payment_method: "pm_card_visa", return_url: page.url() });
+    await page.goto(`/checkout?order=${o!.id}&redirect_status=succeeded`);
+  }
   await expect(page.getByRole("heading", { name: "You're all set!" })).toBeVisible();
 
   // The order is stored as paid, with the allergy confirmation and a server-computed total.

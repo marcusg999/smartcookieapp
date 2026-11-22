@@ -15,12 +15,21 @@ describe("checkout inputs carry no money", () => {
   };
   it("strips amount, total and price fields from placeOrder input", () => {
     const parsed = placeOrderSchema.parse({ ...valid, amount: 1, total_cents: 1, totalCents: 1, price_cents: 1 });
-    expect(Object.keys(parsed)).not.toEqual(expect.arrayContaining(["amount", "total_cents", "totalCents", "price_cents"]));
+    expect(Object.keys(parsed)).not.toEqual(
+      expect.arrayContaining(["amount", "total_cents", "totalCents", "price_cents"]),
+    );
     expect(parsed).not.toHaveProperty("amount");
   });
   it("strips prices from cart lines", () => {
     const [line] = cartLinesSchema.parse([
-      { childId: valid.weekId, menuItemId: valid.weekId, deliveryDate: "2032-01-05", quantity: 1, priceCents: 1, unitPriceCents: 1 },
+      {
+        childId: valid.weekId,
+        menuItemId: valid.weekId,
+        deliveryDate: "2032-01-05",
+        quantity: 1,
+        priceCents: 1,
+        unitPriceCents: 1,
+      },
     ]);
     expect(line).toEqual({ childId: valid.weekId, menuItemId: valid.weekId, deliveryDate: "2032-01-05", quantity: 1 });
   });
