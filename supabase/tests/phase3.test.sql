@@ -176,9 +176,12 @@ select is((select count(*)::int from public.children where household_id = (selec
 
 -- ═══ School admin / staff ═══════════════════════════════════════════════════
 select pg_temp.act_as('10000000-0000-4000-8000-000000000003');
-select is((select array_agg(first_name order by first_name) from public.children), array['Ann'],
-  'school admin sees only the child enrolled through their school');
-select is((select count(*)::int from public.child_allergens), 1, 'school admin sees the enrolled child''s allergens');
+-- Phase 7: schools see linked children only through school_roster() (first
+-- name, last initial, allergies once the link is approved), never the table.
+select is((select array_agg(first_name order by first_name) from public.school_roster((select id from fx where k = 'org'))),
+  array['Ann'], 'school admin sees only the child linked to their school');
+select is((select count(*)::int from public.children) + (select count(*)::int from public.child_allergens), 0,
+  'school admin cannot read the children or allergy tables directly');
 select is((select count(*)::int from public.classrooms), 1, 'school admin sees only their classrooms');
 select lives_ok($$ insert into public.classrooms (organization_id, name) select id, 'New room' from fx where k = 'org' $$,
   'school admin adds a classroom');

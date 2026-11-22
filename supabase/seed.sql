@@ -218,10 +218,10 @@ begin
   update public.households set default_address_id = 'ad000000-0000-4000-8000-000000000001' where id = v_h1;
   update public.households set default_address_id = 'ad000000-0000-4000-8000-000000000002' where id = v_h2;
 
-  insert into public.children (id, household_id, first_name, last_initial, school_id, classroom_id, grade, dietary_preferences, notes) values
-    ('cd000000-0000-4000-8000-000000000001', v_h1, 'Maya', 'P', v_org, 'c1000000-0000-4000-8000-000000000002', '2', '{vegetarian}', 'Loves anything with cheese.'),
-    ('cd000000-0000-4000-8000-000000000002', v_h1, 'Leo', 'P', null, null, 'Pre-K', '{}', null),
-    ('cd000000-0000-4000-8000-000000000003', v_h2, 'Ava', 'R', v_org, 'c1000000-0000-4000-8000-000000000003', '4', '{}', 'Small appetite.');
+  insert into public.children (id, household_id, first_name, last_initial, school_id, classroom_id, school_link_status, grade, dietary_preferences, notes) values
+    ('cd000000-0000-4000-8000-000000000001', v_h1, 'Maya', 'P', v_org, 'c1000000-0000-4000-8000-000000000002', 'approved', '2', '{vegetarian}', 'Loves anything with cheese.'),
+    ('cd000000-0000-4000-8000-000000000002', v_h1, 'Leo', 'P', null, null, null, 'Pre-K', '{}', null),
+    ('cd000000-0000-4000-8000-000000000003', v_h2, 'Ava', 'R', v_org, 'c1000000-0000-4000-8000-000000000003', 'approved', '4', '{}', 'Small appetite.');
 
   insert into public.child_allergens (child_id, allergen_id, severity)
   select 'cd000000-0000-4000-8000-000000000001'::uuid, id, 'severe'::public.allergy_severity from public.allergens where slug = 'sesame'
@@ -701,8 +701,6 @@ insert into public.email_templates (key, subject, preheader, body_rich) values
    '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi {{first_name}}, thanks for your order! We''ll deliver on {{delivery_dates}}."}]}]}'),
   ('order_cutoff_reminder', 'Order by {{cutoff}} for next week', 'Next week''s menu is ready.',
    '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Next week''s menu is live. Order by {{cutoff}} so we can cook for you."}]}]}'),
-  ('school_invoice', 'Smart Cookie invoice for {{period}}', 'Your monthly invoice is ready.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Your invoice for {{period}} is ready: {{invoice_url}}"}]}]}'),
   ('subscription_autofill', 'We picked your meals for the week of {{week_of}}', 'Your plan''s meals are chosen. Allergies checked.',
    '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, so we chose your included meals from your favourites (then chef''s choice), skipping anything that clashes with your kids'' allergies. Order {{order_number}}:"}]},{"type":"paragraph","content":[{"type":"text","text":"{{meals}}"}]}]}'),
   ('payment_failed', 'Your Smart Cookie plan payment didn''t go through', 'Update your card to keep meals included.',
