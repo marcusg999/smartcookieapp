@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ViewTransition } from "react";
 
@@ -84,9 +85,16 @@ export default async function MarketingLayout({ children }: LayoutProps<"/">) {
       </ViewTransition>
       <footer className="border-t-2 border-ink bg-ink text-paper">
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:grid-cols-12">
-          <p className="font-display text-3xl leading-tight italic sm:col-span-5">
-            {settings?.business_name ?? "Smart Cookie"}
-          </p>
+          <div className="flex items-center gap-4 sm:col-span-5">
+            <Image
+              src="/brand/logo-192.webp"
+              alt=""
+              width={192}
+              height={192}
+              className="wobble-hover size-24 rotate-[-6deg] drop-shadow-[4px_4px_0_var(--orange)]"
+            />
+            <p className="font-display text-3xl leading-tight italic">{settings?.business_name ?? "Smart Cookie"}</p>
+          </div>
           <div className="space-y-2 text-sm text-paper/85 sm:col-span-7">
             <p>{c.text("footer.tagline")}</p>
             <p>{c.text("footer.allergen_note")}</p>
