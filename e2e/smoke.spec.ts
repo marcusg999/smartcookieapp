@@ -56,7 +56,7 @@ test("PWA manifest is served and valid", async ({ request }) => {
   for (const icon of manifest.icons) expect((await request.get(icon.src)).ok()).toBe(true);
 });
 
-test("Stripe webhook stub rejects requests until implemented", async ({ request }) => {
+test("Stripe webhook rejects unsigned requests", async ({ request }) => {
   const res = await request.post("/api/webhooks/stripe", { data: {} });
-  expect(res.status()).toBe(501);
+  expect(res.status()).toBe(400);
 });
