@@ -15,6 +15,12 @@ export type CspOptions = {
   sentryDsn?: string;
 };
 
+/** sonner's injected <style> (its CSS, and the empty element it creates first). */
+export const SONNER_STYLE_HASHES = [
+  "'sha256-StEaX+se6YS7pqjzrzMIA0KaX9zF/8zAhvQXZAe5epY='",
+  "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
+];
+
 const STRIPE = {
   script: ["https://js.stripe.com"],
   frame: ["https://js.stripe.com", "https://hooks.stripe.com"],
@@ -83,7 +89,10 @@ export function buildCsp({ nonce, isDev, supabaseUrl, sentryDsn }: CspOptions): 
       ...(isDev ? ["'unsafe-eval'"] : []),
     ],
     // <style> elements need the nonce. In dev, Next's HMR injects styles without one.
-    "style-src": ["'self'", isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`],
+    // The toast library (sonner) injects one fixed stylesheet at runtime; it's
+    // allowed by its exact hash only (lib/security/csp.test.ts re-derives it
+    // from node_modules, so an upgrade that changes it fails the tests).
+    "style-src": ["'self'", isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`, ...(isDev ? [] : SONNER_STYLE_HASHES)],
     // style="" attributes (used by some UI primitives) are allowed separately;
     // they can't execute script.
     "style-src-attr": ["'unsafe-inline'"],

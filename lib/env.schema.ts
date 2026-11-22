@@ -28,6 +28,8 @@ export const serverOnlySchema = z.object({
   TURNSTILE_SECRET_KEY: z.string().min(1),
   UPSTASH_REDIS_REST_URL: url,
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
+  // Optional: bearer secret for scheduled jobs (Vercel Cron → /api/cron/*). Unset = jobs disabled.
+  CRON_SECRET: z.string().min(32).optional(),
   // Optional: shorten the 5-minute step-up window (tests only; can never exceed 300).
   STEP_UP_MAX_AGE_SECONDS: z.coerce.number().int().min(1).max(300).optional(),
   // Build-time only, optional: lets the Sentry build plugin upload source maps.

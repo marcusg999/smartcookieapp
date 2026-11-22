@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCsp, generateNonce, sentryIngestOrigin } from "./csp";
+import { buildCsp, generateNonce, sentryIngestOrigin, SONNER_STYLE_HASHES } from "./csp";
 
 const base = {
   nonce: "abc123",
@@ -25,7 +25,7 @@ describe("buildCsp (production)", () => {
   });
 
   it("requires the nonce for <style> elements", () => {
-    expect(directive(csp, "style-src")).toEqual(["'self'", "'nonce-abc123'"]);
+    expect(directive(csp, "style-src")).toEqual(["'self'", "'nonce-abc123'", ...SONNER_STYLE_HASHES]);
   });
 
   it("blocks framing, plugins and base-tag hijacking", () => {
@@ -78,5 +78,17 @@ describe("helpers", () => {
     expect(sentryIngestOrigin("https://pub@o9.ingest.de.sentry.io/1")).toBe("https://o9.ingest.de.sentry.io");
     expect(sentryIngestOrigin("garbage")).toBeNull();
     expect(sentryIngestOrigin(undefined)).toBeNull();
+  });
+});
+
+describe("sonner style hash", () => {
+  it("matches the stylesheet the installed sonner injects", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { createHash } = await import("node:crypto");
+    const src = readFileSync("node_modules/sonner/dist/index.mjs", "utf8");
+    const call = src.slice(src.indexOf('__insertCSS("') + "__insertCSS(".length);
+    const css = JSON.parse(call.slice(0, call.indexOf('");') + 1)) as string;
+    const hash = `'sha256-${createHash("sha256").update(css).digest("base64")}'`;
+    expect(SONNER_STYLE_HASHES).toContain(hash);
   });
 });

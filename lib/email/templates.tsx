@@ -16,6 +16,8 @@ export const EMAIL_VARIABLES: Record<string, { label: string; sample: string }> 
   period: { label: "Invoice period", sample: "November 2026" },
   invoice_url: { label: "Invoice link", sample: "https://smartcookie.example/invoice/123" },
   business_name: { label: "Business name", sample: "Smart Cookie" },
+  week_of: { label: "Menu week", sample: "Nov 30" },
+  meals: { label: "Meals chosen (one per line)", sample: "Maya · Mon · Baked mac & cheese" },
 };
 
 /** Replace {{variables}}; unknown variables are left visible so mistakes are obvious in previews. */

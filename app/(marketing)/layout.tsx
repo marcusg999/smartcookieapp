@@ -5,15 +5,24 @@ import { HalftoneDefs } from "@/components/art/cartoons";
 import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
 import { getContent } from "@/lib/content/content";
+import { getPublishedPageSlugs } from "@/lib/content/public-data";
 import { getPublicSettings } from "@/lib/content/settings";
+import { getUser, homeFor } from "@/lib/auth/guards";
 
 // Marketing shell. All words come from the CMS (CLAUDE.md §1, guiding principle).
 export default async function MarketingLayout({ children }: LayoutProps<"/">) {
-  const [c, settings] = await Promise.all([getContent(), getPublicSettings().catch(() => null)]);
+  const [c, settings, user, pages] = await Promise.all([
+    getContent(),
+    getPublicSettings().catch(() => null),
+    getUser(),
+    getPublishedPageSlugs().catch(() => []),
+  ]);
   const nav = [
     { href: "/menu", label: c.text("nav.menu") },
     { href: "/#how-it-works", label: c.text("nav.how_it_works") },
-    { href: "/#schools", label: c.text("nav.schools") },
+    { href: "/plans", label: c.text("nav.plans") },
+    { href: "/schools", label: c.text("nav.schools") },
+    { href: "/faq", label: c.text("nav.faq") },
   ];
   const social = Object.entries(settings?.social_links ?? {}).filter(
     ([, url]) => typeof url === "string" && url.startsWith("https://"),
@@ -36,12 +45,20 @@ export default async function MarketingLayout({ children }: LayoutProps<"/">) {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-              <Link href="/sign-in">{c.text("nav.sign_in")}</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/sign-up">{c.text("nav.get_started")}</Link>
-            </Button>
+            {user ? (
+              <Button asChild size="sm">
+                <Link href={homeFor(user.roles)}>{c.text("nav.my_account")}</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  <Link href="/sign-in">{c.text("nav.sign_in")}</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/sign-up">{c.text("nav.get_started")}</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
         <nav
@@ -53,9 +70,11 @@ export default async function MarketingLayout({ children }: LayoutProps<"/">) {
               {item.label}
             </Link>
           ))}
-          <Link href="/sign-in" className="shrink-0 rounded-sm sm:hidden">
-            {c.text("nav.sign_in")}
-          </Link>
+          {user ? null : (
+            <Link href="/sign-in" className="shrink-0 rounded-sm sm:hidden">
+              {c.text("nav.sign_in")}
+            </Link>
+          )}
         </nav>
       </header>
       <ViewTransition enter="page-in" exit="page-out" default="none">
@@ -80,6 +99,17 @@ export default async function MarketingLayout({ children }: LayoutProps<"/">) {
                 ) : null}
                 {settings.contact_phone ? <span>{settings.contact_phone}</span> : null}
               </p>
+            ) : null}
+            {pages.length ? (
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
+                {[...nav.slice(2), ...pages.map((p) => ({ href: `/${p.slug}`, label: p.title }))].map((item) => (
+                  <li key={item.href}>
+                    <Link className="underline decoration-orange underline-offset-4" href={item.href}>
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             ) : null}
             {social.length ? (
               <ul className="flex flex-wrap gap-x-4">

@@ -6,14 +6,12 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Phase 4: customer-facing pages must not hard-code copy. Every sentence in
- * JSX under app/(marketing) and app/(family) must come from content_blocks
+ * JSX under the marketing and family areas (and their components) must come from content_blocks
  * (lib/content). Anything with two or more words counts as a sentence.
  */
-const ROOTS = ["app/(marketing)", "app/(family)"];
+const ROOTS = ["app/(marketing)", "app/(family)", "components/family", "components/marketing"];
 
-// Security/privacy account screens: system copy rebuilt with the family
-// experience in Phase 5 (docs/phase-4.md, known gaps).
-const ALLOW_FILES = new Set(["app/(family)/account/security/page.tsx", "app/(family)/account/privacy/page.tsx"]);
+const ALLOW_FILES = new Set<string>();
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

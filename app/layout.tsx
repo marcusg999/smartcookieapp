@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { getContent } from "@/lib/content/content";
 import { brandCss, getPublicSettings, type PublicSettings } from "@/lib/content/settings";
+import { publicEnv } from "@/lib/env.public";
 
 import "./globals.css";
 
@@ -17,6 +19,9 @@ const bodoni = localFont({
   ],
   variable: "--font-bodoni",
   display: "swap",
+  // Display face: not preloaded, so the body font (which paints the first
+  // text) isn't competing for bandwidth on slow phones. Headings swap in.
+  preload: false,
 });
 const sourceSans = localFont({
   src: [
@@ -27,14 +32,23 @@ const sourceSans = localFont({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: { default: "Smart Cookie", template: "%s · Smart Cookie" },
-  description: "Healthy, home-cooked meals for kids, delivered to families and schools.",
-  applicationName: "Smart Cookie",
-  appleWebApp: { capable: true, title: "Smart Cookie", statusBarStyle: "default" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
-  formatDetection: { telephone: false },
-};
+/** Site-wide SEO from the CMS (business name from settings, description from content). */
+export async function generateMetadata(): Promise<Metadata> {
+  const [settings, c] = await Promise.all([safeSettings(), getContent().catch(() => null)]);
+  const name = settings?.business_name ?? "Smart Cookie";
+  const description = c?.text("seo.site_description") || undefined;
+  return {
+    metadataBase: new URL(publicEnv.NEXT_PUBLIC_SITE_URL),
+    title: { default: name, template: `%s · ${name}` },
+    description,
+    applicationName: name,
+    openGraph: { type: "website", siteName: name, title: name, description, locale: "en_US" },
+    twitter: { card: "summary", title: name, description },
+    appleWebApp: { capable: true, title: name, statusBarStyle: "default" },
+    icons: { apple: "/icons/apple-touch-icon.png" },
+    formatDetection: { telephone: false },
+  };
+}
 
 const FALLBACK_INK = "#1f3b2d";
 

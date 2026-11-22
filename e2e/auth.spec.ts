@@ -18,14 +18,17 @@ test("sign up with a password → verify email → signed in → sign out → si
 
   const link = await waitForEmailLink(email, { subject: /Confirm/ });
   await page.goto(link);
-  await expect(page).toHaveURL(/\/account$/);
+  // A brand-new parent lands on the welcome steps (Phase 5), which they can skip.
+  await expect(page).toHaveURL(/\/welcome$/);
+  await page.getByRole("link", { name: "Skip for now" }).click();
+  await expect(page).toHaveURL(/\/account\?skip=1$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hi, Pat");
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/");
 
   await signInWithPassword(page, email);
-  await expect(page).toHaveURL(/\/account$/);
+  await expect(page).toHaveURL(/\/(account|welcome)$/);
 });
 
 test("unconfirmed accounts can't sign in, and errors don't reveal whether an account exists", async ({ page }) => {
@@ -43,7 +46,7 @@ test("magic link sign-in", async ({ page }) => {
 
   const link = await waitForEmailLink(email, { subject: /sign-in link/ });
   await page.goto(link);
-  await expect(page).toHaveURL(/\/account$/);
+  await expect(page).toHaveURL(/\/(account|welcome)$/);
 });
 
 test("magic link for an unknown email gets the same generic answer", async ({ page }) => {
@@ -65,7 +68,7 @@ test("non-staff get a 404 at /admin", async ({ page }) => {
   const email = uniqueEmail("parent");
   await createUser(email);
   await signInWithPassword(page, email);
-  await expect(page).toHaveURL(/\/account$/);
+  await expect(page).toHaveURL(/\/(account|welcome)$/);
   const res = await page.goto("/admin/staff");
   expect(res?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();

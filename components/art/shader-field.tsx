@@ -82,6 +82,49 @@ export function ShaderField({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Decoration never competes with the page loading: WebGL starts only once
+    // the visitor has interacted AND the canvas is near the viewport (on
+    // phones without a GPU a full-screen shader is expensive).
+    let cleanup: (() => void) | undefined;
+    let interacted = false;
+    let near = false;
+    const events = ["pointerdown", "keydown", "wheel", "touchstart", "scroll"] as const;
+    const maybeStart = () => {
+      if (!interacted || !near || cleanup) return;
+      cleanup = startShader(canvas, intensity, transparent) ?? (() => {});
+    };
+    const onInteract = () => {
+      interacted = true;
+      for (const e of events) window.removeEventListener(e, onInteract);
+      maybeStart();
+    };
+    for (const e of events) window.addEventListener(e, onInteract, { passive: true, once: true });
+    const gate = new IntersectionObserver(
+      ([entry]) => {
+        near = entry?.isIntersecting ?? false;
+        maybeStart();
+      },
+      { rootMargin: "200px" },
+    );
+    gate.observe(canvas);
+    return () => {
+      for (const e of events) window.removeEventListener(e, onInteract);
+      gate.disconnect();
+      cleanup?.();
+    };
+  }, [intensity, transparent]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className={cn("pointer-events-none absolute inset-0 h-full w-full", className)}
+    />
+  );
+}
+
+function startShader(canvas: HTMLCanvasElement, intensity: number, transparent: boolean): (() => void) | undefined {
+  {
     const gl = canvas.getContext("webgl", { antialias: false, premultipliedAlpha: true, alpha: true });
     if (!gl) return;
 
@@ -118,7 +161,7 @@ export function ShaderField({
     const dot = rgb("--orange", [0.96, 0.71, 0.71]);
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1);
     let raf = 0;
     let visible = true;
     const start = performance.now() - Math.random() * 60_000;
@@ -141,8 +184,13 @@ export function ShaderField({
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
 
+    let last = 0;
     const loop = (now: number) => {
-      draw(now);
+      // ~30 fps is plenty for a slow drift.
+      if (now - last >= 33) {
+        last = now;
+        draw(now);
+      }
       if (!reduced && visible && !document.hidden) raf = requestAnimationFrame(loop);
     };
 
@@ -172,13 +220,5 @@ export function ShaderField({
       document.removeEventListener("visibilitychange", restart);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
-  }, [intensity, transparent]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden="true"
-      className={cn("pointer-events-none absolute inset-0 h-full w-full", className)}
-    />
-  );
+  }
 }

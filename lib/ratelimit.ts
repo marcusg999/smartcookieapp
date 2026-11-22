@@ -12,6 +12,8 @@ import { env } from "@/lib/env";
  *   magicLink     3 / 15 minutes / email
  *   checkout     10 / minute / user
  *   adminMutation 60 / minute / user
+ *   familyMutation 90 / minute / user  cart edits, children, favourites
+ *   codeCheck      8 / minute / user or IP  discount and pilot codes (no guessing)
  *
  * Usage:
  *   const { success } = await rateLimit("auth", clientIp(await headers()));
@@ -23,6 +25,8 @@ export const LIMITS = {
   magicLink: { tokens: 3, window: "15 m" },
   checkout: { tokens: 10, window: "1 m" },
   adminMutation: { tokens: 60, window: "1 m" },
+  familyMutation: { tokens: 90, window: "1 m" },
+  codeCheck: { tokens: 8, window: "1 m" },
 } as const satisfies Record<string, { tokens: number; window: `${number} ${"s" | "m" | "h"}` }>;
 
 export type LimiterName = keyof typeof LIMITS;
@@ -70,12 +74,12 @@ export function usesPlaceholderRedis(url: string): boolean {
 function getLimiters(): Record<LimiterName, Limiter> {
   if (limiters) return limiters;
   if (usesPlaceholderRedis(env.UPSTASH_REDIS_REST_URL) && env.NEXT_PUBLIC_APP_ENV !== "production") {
-    limiters = {
-      auth: memoryLimiter(LIMITS.auth.tokens, LIMITS.auth.window),
-      magicLink: memoryLimiter(LIMITS.magicLink.tokens, LIMITS.magicLink.window),
-      checkout: memoryLimiter(LIMITS.checkout.tokens, LIMITS.checkout.window),
-      adminMutation: memoryLimiter(LIMITS.adminMutation.tokens, LIMITS.adminMutation.window),
-    };
+    limiters = Object.fromEntries(
+      (Object.keys(LIMITS) as LimiterName[]).map((name) => [
+        name,
+        memoryLimiter(LIMITS[name].tokens, LIMITS[name].window),
+      ]),
+    ) as Record<LimiterName, Limiter>;
     return limiters;
   }
   const redis = new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN });
@@ -87,12 +91,9 @@ function getLimiters(): Record<LimiterName, Limiter> {
       analytics: false,
       enableTelemetry: false,
     });
-  limiters = {
-    auth: make("auth"),
-    magicLink: make("magicLink"),
-    checkout: make("checkout"),
-    adminMutation: make("adminMutation"),
-  };
+  limiters = Object.fromEntries(
+    (Object.keys(LIMITS) as LimiterName[]).map((name) => [name, make(name)]),
+  ) as unknown as Record<LimiterName, Limiter>;
   return limiters;
 }
 

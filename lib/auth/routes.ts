@@ -1,6 +1,16 @@
 /** Route classification for the proxy's coarse redirects (Phase 2). */
 
-const FAMILY_PROTECTED = ["/account", "/orders", "/cart", "/checkout", "/favorites", "/subscription", "/children"];
+const FAMILY_PROTECTED = [
+  "/account",
+  "/order",
+  "/orders",
+  "/cart",
+  "/checkout",
+  "/favorites",
+  "/subscription",
+  "/children",
+  "/welcome",
+];
 
 function under(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
