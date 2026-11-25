@@ -80,3 +80,27 @@ export async function deleteAccount(_prev: ActionResult | null, formData: FormDa
   await supabase.auth.signOut({ scope: "local" });
   redirect("/?account=deleted");
 }
+
+const prefsSchema = z.object({ menu_published: z.boolean(), cutoff_reminders: z.boolean() });
+
+/** Optional email topics (Phase 9). Account, order and security emails can't be turned off. */
+export async function saveEmailPreferences(input: unknown): Promise<ActionResult> {
+  const user = await getUser();
+  if (!user) return fail("unauthorized", "Please sign in again.");
+  const parsed = prefsSchema.safeParse(input);
+  if (!parsed.success) return fail("validation", "Please check your choices.");
+  const supabase = await createClient();
+  // RLS: a user can only read and write their own preferences row.
+  // Update first (only the two topic columns are updatable), insert if new.
+  const { data: updated, error } = await supabase
+    .from("email_preferences")
+    .update(parsed.data)
+    .eq("user_id", user.id)
+    .select("user_id");
+  const { error: insertError } =
+    !error && !updated?.length
+      ? await supabase.from("email_preferences").insert({ user_id: user.id, ...parsed.data })
+      : { error: null };
+  if (error || insertError) return fail("unknown", "We couldn't save that. Please try again.");
+  return { ok: true };
+}

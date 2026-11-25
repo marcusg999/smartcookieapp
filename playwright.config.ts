@@ -43,6 +43,10 @@ export default defineConfig({
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         // Shrink the 5-minute step-up window so the step-up test runs quickly.
-        env: { STEP_UP_MAX_AGE_SECONDS: "5" },
+        // A fixed cron secret so tests can run the email worker (e2e/support/cron.ts).
+        env: {
+          STEP_UP_MAX_AGE_SECONDS: "5",
+          CRON_SECRET: process.env.CRON_SECRET ?? "e2e-only-cron-secret-not-used-in-production-000",
+        },
       },
 });

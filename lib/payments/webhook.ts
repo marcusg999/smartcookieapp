@@ -40,29 +40,6 @@ function invoiceSubscription(invoice: Stripe.Invoice) {
   return { stripeSub, ours, periodStart: ts(line?.period?.start), periodEnd: ts(line?.period?.end) };
 }
 
-async function queueOrderConfirmation(admin: Admin, orderId: string) {
-  const { data: o } = await admin.from("orders").select("household_id").eq("id", orderId).single();
-  if (!o?.household_id) return;
-  const { data: hh } = await admin.from("households").select("primary_user_id").eq("id", o.household_id).single();
-  const { data: user } = hh?.primary_user_id ? await admin.auth.admin.getUserById(hh.primary_user_id) : { data: null };
-  if (!user?.user?.email) return;
-  // One confirmation per order, however many times Stripe retries.
-  const { data: existing } = await admin
-    .from("notifications_log")
-    .select("id")
-    .eq("template_key", "order_confirmation")
-    .contains("payload", { order_id: orderId })
-    .limit(1);
-  if (existing?.length) return;
-  await admin.from("notifications_log").insert({
-    to_address: user.user.email,
-    template_key: "order_confirmation",
-    status: "queued",
-    household_id: o.household_id,
-    payload: { order_id: orderId },
-  });
-}
-
 /** School invoice bookkeeping (Phase 7). Out-of-order safe in SQL. */
 async function schoolInvoiceEvent(admin: Admin, invoice: Stripe.Invoice, kind: string): Promise<string> {
   const { data, error } = await admin.rpc("stripe_school_invoice_event", {
@@ -95,7 +72,7 @@ export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps):
       });
       if (error) throw new Error(error.message);
       const orderId = pi.metadata?.order_id;
-      if (outcome === "paid" && orderId) await queueOrderConfirmation(admin, orderId);
+      // The order confirmation email is queued by a database trigger (Phase 9).
       if (outcome === "refund_expired" && orderId) await deps.refundInFull(orderId, "Paid after the order expired");
       return String(outcome);
     }

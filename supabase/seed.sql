@@ -603,6 +603,17 @@ insert into public.content_blocks (key, type, description, draft_value, publishe
   ('sub.none', 'text', 'No plan', '"You''re ordering à la carte. Subscribe and meals are included every week."', '"You''re ordering à la carte. Subscribe and meals are included every week."', now()),
   ('sub.choose', 'text', 'Choose plan heading', '"Choose a plan"', '"Choose a plan"', now()),
   ('sub.start', 'text', 'Start button', '"Start this plan"', '"Start this plan"', now()),
+  ('sub.arl_heading', 'text', 'Auto-renewal box heading', '"Automatic renewal"', '"Automatic renewal"', now()),
+  ('sub.arl_renews', 'text', 'Auto-renewal terms (use {every} and {amount})', '"This plan renews automatically {every} at {amount} until you cancel. You''re charged when it starts and at the start of each billing period."', '"This plan renews automatically {every} at {amount} until you cancel. You''re charged when it starts and at the start of each billing period."', now()),
+  ('sub.arl_every_week', 'text', 'Billing frequency: weekly', '"every week"', '"every week"', now()),
+  ('sub.arl_every_two_weeks', 'text', 'Billing frequency: every two weeks', '"every two weeks"', '"every two weeks"', now()),
+  ('sub.arl_every_month', 'text', 'Billing frequency: monthly', '"every month"', '"every month"', now()),
+  ('sub.arl_per_child', 'text', 'Per-child price note (use {price}, {count})', '"That''s {price} per child for {count} children."', '"That''s {price} per child for {count} children."', now()),
+  ('sub.arl_trial', 'text', 'Free trial terms (use {count}, {amount})', '"Your first {count} billing period(s) are free. Unless you cancel before the trial ends, you''ll then be charged {amount}."', '"Your first {count} billing period(s) are free. Unless you cancel before the trial ends, you''ll then be charged {amount}."', now()),
+  ('sub.arl_min_term', 'text', 'Minimum term (use {count})', '"Minimum commitment: {count} billing periods."', '"Minimum commitment: {count} billing periods."', now()),
+  ('sub.arl_cancel', 'text', 'How to cancel (use {email})', '"Cancel any time online on your Plan page (Cancel plan), or email {email}. Cancelling stops the next renewal; meals already paid for are still delivered."', '"Cancel any time online on your Plan page (Cancel plan), or email {email}. Cancelling stops the next renewal; meals already paid for are still delivered."', now()),
+  ('sub.arl_consent', 'text', 'Auto-renewal consent checkbox', '"I agree that this plan renews automatically, as described above, until I cancel."', '"I agree that this plan renews automatically, as described above, until I cancel."', now()),
+  ('sub.arl_required', 'text', 'Consent missing message', '"Please tick the box to agree to automatic renewal first."', '"Please tick the box to agree to automatic renewal first."', now()),
   ('sub.started', 'text', 'Started toast', '"Your plan is active."', '"Your plan is active."', now()),
   ('sub.status_active', 'text', 'Status: active', '"Active"', '"Active"', now()),
   ('sub.status_trialing', 'text', 'Status: trialing', '"Trial"', '"Trial"', now()),
@@ -935,7 +946,38 @@ insert into public.content_blocks (key, type, description, draft_value, publishe
   ('kids.link_pending', 'text', 'Link status: pending', '"Waiting for the school to approve"', '"Waiting for the school to approve"', now()),
   ('kids.link_approved', 'text', 'Link status: approved', '"Linked to the classroom"', '"Linked to the classroom"', now()),
   ('kids.link_rejected', 'text', 'Link status: declined', '"The school didn''t approve this link"', '"The school didn''t approve this link"', now()),
-  ('kids.link_help', 'text', 'Link explanation', '"Linking lets the school see your child''s first name, last initial and allergies, so their class lunch is safe. Never your address or payment details."', '"Linking lets the school see your child''s first name, last initial and allergies, so their class lunch is safe. Never your address or payment details."', now());
+  ('kids.link_help', 'text', 'Link explanation', '"Linking lets the school see your child''s first name, last initial and allergies, so their class lunch is safe. Never your address or payment details."', '"Linking lets the school see your child''s first name, last initial and allergies, so their class lunch is safe. Never your address or payment details."', now()),
+  ('email.footer.transactional', 'text', 'Footer: account emails', '"You''re getting this because you have an account with us. It''s about your orders, so it can''t be turned off."', '"You''re getting this because you have an account with us. It''s about your orders, so it can''t be turned off."', now()),
+  ('email.footer.security', 'text', 'Footer: security notices', '"Security notice for your account. If this wasn''t you, change your password and contact us."', '"Security notice for your account. If this wasn''t you, change your password and contact us."', now()),
+  ('email.footer.menu_published', 'text', 'Footer: new menu emails', '"You''re getting this because you asked to hear about new menus."', '"You''re getting this because you asked to hear about new menus."', now()),
+  ('email.footer.cutoff_reminders', 'text', 'Footer: reminder emails', '"You''re getting this because you asked for order reminders."', '"You''re getting this because you asked for order reminders."', now()),
+  ('email.footer.unsubscribe', 'text', 'Unsubscribe link', '"Unsubscribe from these emails"', '"Unsubscribe from these emails"', now()),
+  ('email.reason.not_ordered', 'text', 'Reminder reason: no order', '"You haven''t ordered for this week yet."', '"You haven''t ordered for this week yet."', now()),
+  ('email.reason.allowance_left', 'text', 'Reminder reason: plan meals left', '"Your plan still has meals to pick this week."', '"Your plan still has meals to pick this week."', now()),
+  ('email.severe', 'text', 'Allergy recap: severe', '"severe"', '"severe"', now()),
+  ('email.no_allergies', 'text', 'Allergy recap: none', '"no allergies on file"', '"no allergies on file"', now()),
+  ('email.role.kitchen', 'text', 'Role name: kitchen', '"kitchen"', '"kitchen"', now()),
+  ('email.role.ops', 'text', 'Role name: ops', '"operations"', '"operations"', now()),
+  ('email.role.owner', 'text', 'Role name: owner', '"owner"', '"owner"', now()),
+  ('email.renewal_terms_fallback', 'text', 'Renewal terms (if none were saved)', '"Your plan renews automatically until you cancel. You can cancel any time on your Plan page."', '"Your plan renews automatically until you cancel. You can cancel any time on your Plan page."', now()),
+  ('account.notify.title', 'text', 'Account card title', '"Email preferences"', '"Email preferences"', now()),
+  ('account.notify.body', 'text', 'Account card text', '"Choose which optional emails you get."', '"Choose which optional emails you get."', now()),
+  ('notify.title', 'text', 'Page heading', '"Email preferences"', '"Email preferences"', now()),
+  ('notify.intro', 'text', 'Intro', '"Order confirmations, receipts, plan and security emails always come, because they''re about your account. These are optional:"', '"Order confirmations, receipts, plan and security emails always come, because they''re about your account. These are optional:"', now()),
+  ('notify.menu_published', 'text', 'Option: new menu', '"New weekly menu"', '"New weekly menu"', now()),
+  ('notify.menu_published_help', 'text', 'Option help: new menu', '"When next week''s menu goes up."', '"When next week''s menu goes up."', now()),
+  ('notify.cutoff_reminders', 'text', 'Option: reminders', '"Order reminders"', '"Order reminders"', now()),
+  ('notify.cutoff_reminders_help', 'text', 'Option help: reminders', '"A nudge before ordering closes if you haven''t ordered yet, with a one-tap \"repeat last week\" link."', '"A nudge before ordering closes if you haven''t ordered yet, with a one-tap \"repeat last week\" link."', now()),
+  ('notify.save', 'text', 'Save button', '"Save preferences"', '"Save preferences"', now()),
+  ('notify.saved', 'text', 'Saved message', '"Saved."', '"Saved."', now()),
+  ('unsub.title', 'text', 'Page heading', '"Unsubscribe"', '"Unsubscribe"', now()),
+  ('unsub.confirm_menu_published', 'text', 'Question: new menu', '"Stop emails about new weekly menus?"', '"Stop emails about new weekly menus?"', now()),
+  ('unsub.confirm_cutoff_reminders', 'text', 'Question: reminders', '"Stop order reminder emails?"', '"Stop order reminder emails?"', now()),
+  ('unsub.button', 'text', 'Button', '"Unsubscribe"', '"Unsubscribe"', now()),
+  ('unsub.all', 'text', 'Button: all', '"Unsubscribe from all optional emails"', '"Unsubscribe from all optional emails"', now()),
+  ('unsub.done', 'text', 'Done message', '"Done. You won''t get these emails any more. Order and account emails will still arrive."', '"Done. You won''t get these emails any more. Order and account emails will still arrive."', now()),
+  ('unsub.invalid', 'text', 'Invalid link', '"This link isn''t valid any more. You can change your emails in your account."', '"This link isn''t valid any more. You can change your emails in your account."', now()),
+  ('unsub.manage', 'text', 'Link to preferences', '"Manage all email preferences"', '"Manage all email preferences"', now());
 -- END content_blocks
 
 insert into public.pages (slug, title, seo_title, seo_description, body_draft, body_published, is_published, published_at) values
@@ -963,17 +1005,8 @@ insert into public.testimonials (quote, attribution, is_published, sort_order) v
   ('Ordering takes me two minutes now, and my picky eater actually finishes lunch.', 'Priya, mom of two', true, 1),
   ('The allergy labels give our teachers real peace of mind.', 'Front office, partner school', true, 2);
 
-insert into public.email_templates (key, subject, preheader, body_rich) values
-  ('order_confirmation', 'Your Smart Cookie order {{order_number}} is confirmed', 'Here''s what''s coming this week.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi {{first_name}}, thanks for your order! We''ll deliver on {{delivery_dates}}."}]}]}'),
-  ('order_cutoff_reminder', 'Order by {{cutoff}} for next week', 'Next week''s menu is ready.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Next week''s menu is live. Order by {{cutoff}} so we can cook for you."}]}]}'),
-  ('subscription_autofill', 'We picked your meals for the week of {{week_of}}', 'Your plan''s meals are chosen. Allergies checked.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, so we chose your included meals from your favourites (then chef''s choice), skipping anything that clashes with your kids'' allergies. Order {{order_number}}:"}]},{"type":"paragraph","content":[{"type":"text","text":"{{meals}}"}]}]}'),
-  ('payment_failed', 'Your Smart Cookie plan payment didn''t go through', 'Update your card to keep meals included.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi {{first_name}}, we couldn''t take your latest plan payment. We''ll try again automatically, but the quickest fix is to update your card here: {{update_card_url}}"}]}]}'),
-  ('subscription_autofill_failed', 'We couldn''t pick meals for the week of {{week_of}}', 'Please get in touch.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, but we couldn''t safely choose meals for your plan this week (no delivery address, or no meal that fits everyone''s allergies). Reply to this email and we''ll sort it out."}]}]}');
+-- Email templates are seeded by the migrations (20261128000100_email.sql), so
+-- every environment has them.
 
 update public.site_settings set contact_email = 'hello@smartcookie.test', contact_phone = '(626) 555-0100',
   social_links = '{"instagram":"https://instagram.com/smartcookie"}';

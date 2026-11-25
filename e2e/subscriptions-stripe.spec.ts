@@ -53,14 +53,19 @@ test("plan lifecycle with a test clock: allowances, skip credit, pause, renewal,
     await signInWithPassword(page, email, "/subscription");
     await expect(page).toHaveURL(/\/subscription/);
     const card = page.getByRole("listitem").filter({ hasText: "3 Lunches / week / child" });
+    // California ARL: the disclosure sits next to the button and consent is required.
+    await expect(card.getByText(/renews automatically every week/)).toBeVisible();
+    await card.getByRole("checkbox", { name: /renews automatically/ }).check();
     await card.getByRole("button", { name: "Start this plan" }).click();
     await expect(page.getByRole("heading", { name: "Start your plan" })).toBeVisible({ timeout: 30_000 });
     const { data: sub } = await admin
       .from("subscriptions")
-      .select("id, stripe_subscription_id")
+      .select("id, stripe_subscription_id, renewal_consent_at, renewal_terms")
       .eq("household_id", householdId)
       .single();
     expect(sub!.stripe_subscription_id).toMatch(/^sub_/);
+    expect(sub!.renewal_consent_at).not.toBeNull();
+    expect(sub!.renewal_terms).toMatch(/renews automatically every week/);
 
     // Confirm the first invoice with a test card (the browser's Stripe.js confirm
     // can't run in the dev sandbox; see e2e/payments.spec.ts).

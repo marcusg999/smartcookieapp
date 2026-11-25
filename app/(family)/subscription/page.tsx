@@ -3,7 +3,7 @@ import { SubscriptionPanel } from "@/components/family/subscription-panel";
 import { requireUser } from "@/lib/auth/guards";
 import { getContent } from "@/lib/content/content";
 import { getPublicSettings } from "@/lib/content/settings";
-import { describePlan } from "@/lib/family/plan-copy";
+import { describePlan, renewalTerms } from "@/lib/family/plan-copy";
 import { getChildren, getHousehold, getOrderableWeeks, getPlans, getSubscription } from "@/lib/family/queries";
 import { publicEnv } from "@/lib/env.public";
 import { createClient } from "@/lib/supabase/server";
@@ -37,7 +37,10 @@ export default async function SubscriptionPage() {
       <PageTitle>{c.text("sub.title")}</PageTitle>
       <SubscriptionPanel
         copy={{ ...c.group("sub."), skip_week: c.text("order.skip_week"), unskip_week: c.text("order.unskip_week") }}
-        plans={plans.map((p) => describePlan(p, c))}
+        plans={plans.map((p) => ({
+          ...describePlan(p, c),
+          renewalTerms: renewalTerms(p, c, kids.length, settings?.contact_email ?? null),
+        }))}
         sub={
           sub
             ? {

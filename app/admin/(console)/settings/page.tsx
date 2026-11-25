@@ -14,6 +14,7 @@ export default async function SettingsPage() {
   const colors = (s?.brand_colors ?? {}) as Record<string, string>;
   const social = (s?.social_links ?? {}) as Record<string, string>;
   const ann = (s?.announcement ?? {}) as { enabled?: boolean; text?: string; link?: string | null };
+  const email = (s?.email_settings ?? {}) as Record<string, unknown>;
   const tax = (s?.tax_settings ?? {}) as { enabled?: boolean; use_stripe_tax?: boolean; rate_bps?: number };
   const settings: SettingsInput = {
     business_name: s?.business_name ?? "Smart Cookie",
@@ -40,6 +41,12 @@ export default async function SettingsPage() {
     school_invoice_day: s?.school_invoice_day ?? 1,
     school_overdue_suspend_days: s?.school_overdue_suspend_days ?? null,
     kitchen_settings: kitchenSettings(s?.kitchen_settings),
+    email_settings: {
+      cutoff_reminder_hours: Number(email.cutoff_reminder_hours ?? 24),
+      renewal_reminder_days: Number(email.renewal_reminder_days ?? 3),
+      postal_address: String(email.postal_address ?? ""),
+      reply_to: String(email.reply_to ?? ""),
+    },
     logo_path: s?.logo_path ?? null,
   };
   return (
