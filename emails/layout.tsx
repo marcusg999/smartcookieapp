@@ -36,14 +36,15 @@ export function EmailLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>{`
           @media (prefers-color-scheme: dark) {
-            .sc-body { background-color: #151311 !important; }
+            html, body, .sc-body, .sc-body > table > tbody > tr > td { background-color: #151311 !important; }
             .sc-card { background-color: #23201d !important; border-color: #f4f1ea !important; }
             .sc-text, .sc-text * { color: #f4f1ea !important; }
             .sc-muted { color: #c9c2b8 !important; }
-            .sc-button { background-color: ${colors.primary} !important; color: #151311 !important; }
+            .sc-text .sc-button, .sc-text .sc-button * { background-color: ${colors.primary} !important; color: #151311 !important; }
           }
           @media (max-width: 600px) {
-            .sc-card { padding: 20px !important; border-radius: 12px !important; }
+            .sc-card { border-radius: 12px !important; }
+            .sc-card > tbody > tr > td { padding: 20px !important; }
           }
         `}</style>
       </Head>

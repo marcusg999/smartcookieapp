@@ -24,6 +24,9 @@ export class SkipEmail extends Error {}
 const url = (path: string) => new URL(path, env.NEXT_PUBLIC_SITE_URL).toString();
 const str = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
 const shortDay = (d: string) => formatDay(d, { month: "short", day: "numeric" });
+/** A date ("2026-11-30") or a timestamp, shown as "Nov 30" in the business timezone. */
+export const shortWhen = (d: string, timezone: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(d) ? shortDay(d) : formatInZone(d, timezone, { month: "short", day: "numeric" });
 
 /**
  * Build the display values for one queued email from its payload (ids and
@@ -139,10 +142,10 @@ export async function buildVariables(
     const qty = typeof p.quantity === "number" ? p.quantity : 1;
     if (typeof p.price_cents === "number") v.amount = formatCents(p.price_cents * qty);
     if (typeof p.period_end === "string") {
-      v.renews_on = shortDay(p.period_end);
-      v.ends_on = shortDay(p.period_end);
+      v.renews_on = shortWhen(p.period_end, timezone);
+      v.ends_on = shortWhen(p.period_end, timezone);
     }
-    if (typeof p.paused_until === "string") v.paused_until = shortDay(p.paused_until);
+    if (typeof p.paused_until === "string") v.paused_until = shortWhen(p.paused_until, timezone);
     v.renewal_terms = str(p.renewal_terms) || copy["email.renewal_terms_fallback"] || "";
   }
 
