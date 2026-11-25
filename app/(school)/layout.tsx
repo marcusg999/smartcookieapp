@@ -1,40 +1,50 @@
+import { HalftoneDefs } from "@/components/art/cartoons";
+import { Toaster } from "@/components/admin/toaster";
 import { Logo } from "@/components/layout/logo";
 import { NavLink } from "@/components/layout/nav-link";
 import { requireRole } from "@/lib/auth/guards";
-import { createClient } from "@/lib/supabase/server";
+import { getContent } from "@/lib/content/content";
+import { getSchoolContext } from "@/lib/school/queries";
 
-// School organization portal: school roles only (404 otherwise). Org data is
-// further scoped by RLS (org_role()).
-const nav = [
-  { href: "/school", label: "Overview", exact: true },
-  { href: "/school/classrooms", label: "Classrooms" },
-  { href: "/school/standing-orders", label: "Standing orders" },
-  { href: "/school/invoices", label: "Invoices" },
-];
-
+// School organization portal (Phase 7): its own shell and navigation, sharing
+// the menu and kitchen pipeline underneath. School roles only (404
+// otherwise); every query is further scoped by RLS to the user's school.
 export default async function SchoolLayout({ children }: LayoutProps<"/">) {
   await requireRole(["school_admin", "school_staff"], { next: "/school" });
-  const supabase = await createClient();
-  const { data: orgs } = await supabase.from("organizations").select("name, status");
-  const pending = (orgs ?? []).some((o) => o.status === "pending");
+  const [c, ctx] = await Promise.all([getContent(), getSchoolContext()]);
+  const isAdmin = ctx?.role === "school_admin";
+  const approved = ctx?.school.status === "approved";
+  const nav = [
+    { href: "/school", label: c.text("school.nav.overview"), exact: true, show: true },
+    { href: "/school/orders", label: c.text("school.nav.orders"), show: approved },
+    { href: "/school/classrooms", label: c.text("school.nav.classrooms"), show: true },
+    { href: "/school/standing-orders", label: c.text("school.nav.standing"), show: approved },
+    { href: "/school/calendar", label: c.text("school.nav.calendar"), show: approved },
+    { href: "/school/bulk", label: c.text("school.nav.bulk"), show: approved && isAdmin },
+    { href: "/school/billing", label: c.text("school.nav.billing"), show: isAdmin },
+    { href: "/school/staff", label: c.text("school.nav.staff"), show: isAdmin },
+    { href: "/school/setup", label: c.text("school.nav.setup"), show: isAdmin },
+  ].filter((n) => n.show);
   return (
     <div className="flex min-h-full flex-1 flex-col" data-shell="school">
-      <header className="border-b bg-accent/40">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <HalftoneDefs />
+      <Toaster />
+      <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <Logo href="/school" />
-            <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-foreground">
-              School portal
+            <span className="rounded-full border-2 border-ink bg-orange-tint px-2.5 py-0.5 text-xs font-bold">
+              {ctx?.school.name ?? c.text("school.badge")}
             </span>
           </div>
-          <nav aria-label="School" className="-mx-1 flex gap-1 overflow-x-auto">
+          <nav aria-label={c.text("school.nav.label")} className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:pb-0">
             {nav.map(({ href, label, exact }) => (
               <NavLink
                 key={href}
                 href={href}
                 exact={exact}
-                className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                activeClassName="bg-background text-foreground shadow-xs"
+                className="shrink-0 rounded-md border-2 border-transparent px-3 py-1.5 text-sm font-semibold hover:border-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                activeClassName="border-ink! bg-orange shadow-ink-sm"
               >
                 {label}
               </NavLink>
@@ -43,9 +53,12 @@ export default async function SchoolLayout({ children }: LayoutProps<"/">) {
         </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        {pending ? (
-          <p role="status" className="mb-6 rounded-md border border-chart-3/40 bg-chart-3/10 px-4 py-3 text-sm">
-            Your school is waiting for approval. We&apos;ll email you when school ordering is open.
+        {ctx && ctx.school.status !== "approved" ? (
+          <p
+            role="status"
+            className="mb-6 rounded-xl border-2 border-ink bg-orange-tint px-4 py-3 text-sm font-semibold"
+          >
+            {ctx.school.status === "pending" ? c.text("school.pending_banner") : c.text("school.suspended_banner")}
           </p>
         ) : null}
         {children}

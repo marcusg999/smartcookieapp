@@ -107,7 +107,7 @@ test("changing a price asks for step-up and stores a new Stripe price id", async
       async () =>
         (await admin.from("menu_items").select("base_price_cents, stripe_price_id").eq("id", item!.id).single()).data,
     )
-    .toMatchObject({ base_price_cents: 1050, stripe_price_id: expect.stringMatching(/^price_mock_/) });
+    .toMatchObject({ base_price_cents: 1050, stripe_price_id: expect.stringMatching(/^price_/) });
   const { data: history } = await admin
     .from("menu_item_price_history")
     .select("base_price_cents, active_to")

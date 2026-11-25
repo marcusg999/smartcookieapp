@@ -19,6 +19,7 @@ export type Household = {
   ordering_preference: "a_la_carte" | "subscription" | null;
   preferred_plan_id: string | null;
   default_address_id: string | null;
+  stripe_customer_id: string | null;
 };
 
 export type Child = {
@@ -27,6 +28,7 @@ export type Child = {
   last_initial: string | null;
   school_id: string | null;
   classroom_id: string | null;
+  school_link_status: "pending" | "approved" | "rejected" | null;
   grade: string | null;
   dietary_preferences: string[];
   notes: string | null;
@@ -76,6 +78,8 @@ export type Plan = {
 export type Subscription = {
   id: string;
   status: string;
+  quantity: number;
+  payment_failed_at: string | null;
   paused_until: string | null;
   cancel_at_period_end: boolean;
   current_period_end: string | null;
@@ -101,7 +105,7 @@ export const getHousehold = cache(async (): Promise<Household | null> => {
   if (!member) return null;
   const { data } = await supabase
     .from("households")
-    .select("id, name, onboarded_at, ordering_preference, preferred_plan_id, default_address_id")
+    .select("id, name, onboarded_at, ordering_preference, preferred_plan_id, default_address_id, stripe_customer_id")
     .eq("id", member.household_id)
     .maybeSingle();
   return (data as Household | null) ?? null;
@@ -112,7 +116,7 @@ export const getChildren = cache(async (householdId: string): Promise<Child[]> =
   const { data } = await supabase
     .from("children")
     .select(
-      `id, first_name, last_initial, school_id, classroom_id, grade, dietary_preferences, notes,
+      `id, first_name, last_initial, school_id, classroom_id, school_link_status, grade, dietary_preferences, notes,
        child_allergens ( severity, allergen_id, allergens ( name, sort_order ) ),
        allergy_overrides ( menu_item_id, revoked_at )`,
     )
@@ -190,7 +194,7 @@ export const getSubscription = cache(async (householdId: string): Promise<Subscr
   const { data } = await supabase
     .from("subscriptions")
     .select(
-      `id, status, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans ( ${PLAN_COLUMNS} )`,
+      `id, status, quantity, payment_failed_at, paused_until, cancel_at_period_end, current_period_end, pending_plan_id, plans!subscriptions_plan_id_fkey ( ${PLAN_COLUMNS} )`,
     )
     .eq("household_id", householdId)
     .in("status", ["active", "trialing", "past_due", "paused"])
@@ -348,6 +352,10 @@ export type OrderDetail = {
   discount_cents: number;
   tax_cents: number;
   total_cents: number;
+  credit_cents: number;
+  amount_paid_cents: number;
+  amount_refunded_cents: number;
+  last_payment_error: string | null;
   currency: string;
   placed_at: string | null;
   allergy_confirmed_at: string | null;
@@ -373,7 +381,8 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     .from("orders")
     .select(
       `id, order_number, status, source, fulfillment, menu_week_id, subtotal_cents, delivery_fee_cents, discount_cents, tax_cents,
-       total_cents, currency, placed_at, allergy_confirmed_at, address_snapshot, notes,
+       total_cents, currency, placed_at, allergy_confirmed_at, address_snapshot, notes, credit_cents, amount_paid_cents,
+       amount_refunded_cents, last_payment_error,
        order_items ( id, child_id, menu_item_id, delivery_date, quantity, unit_price_cents, item_name, allergens_contained, may_contain, covered_by_subscription )`,
     )
     .eq("id", orderId)

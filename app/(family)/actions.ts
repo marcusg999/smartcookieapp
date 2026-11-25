@@ -9,6 +9,7 @@ import { getChildren, getFavorites, getLastOrderLines, getZoneForZip } from "@/l
 import { getPublishedWeeks, type PublicWeek } from "@/lib/menu/queries";
 import { blockingAllergens, normalizeLines, planRepeat, type CartLine } from "@/lib/ordering/logic";
 import { getPaymentProvider } from "@/lib/payments/provider";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   addressSchema,
   cartLinesSchema,
@@ -480,13 +481,25 @@ export async function previewDiscount(input: unknown): Promise<ActionResult<{ di
  * allergy confirmation. The lines come from the server-side cart, and
  * place_family_order re-validates everything (cutoff in DB time, menu,
  * capacity under row locks, allergies, prices, zone fee, plan allowance).
+ * A changed order is settled right away: the difference is charged to the
+ * saved card or refunded (Phase 6).
  */
-export async function placeOrder(
-  input: unknown,
-): Promise<ActionResult<{ orderId: string; orderNumber: string; totalCents: number; status: string }>> {
+export async function placeOrder(input: unknown): Promise<
+  ActionResult<{
+    orderId: string;
+    orderNumber: string;
+    totalCents: number;
+    status: string;
+    change?: {
+      kind: "settled" | "charged" | "refunded" | "client_secret";
+      amountCents?: number;
+      clientSecret?: string;
+    };
+  }>
+> {
   return familyAction(
     { schema: placeOrderSchema, input, limiter: "checkout" },
-    async (data, { supabase, householdId }) => {
+    async (data, { supabase, householdId, user }) => {
       const { data: cart } = await supabase
         .from("carts")
         .select("lines, replaces_order_id")
@@ -499,6 +512,7 @@ export async function placeOrder(
       if (kidsInCart.some((id) => !data.confirmedChildIds.includes(id))) {
         return fail("validation", "Please confirm each child's allergies.");
       }
+      const replacing = (cart!.replaces_order_id as string | null) ?? null;
 
       const { data: orderId, error } = await supabase.rpc("place_family_order", {
         p_household: householdId,
@@ -509,9 +523,22 @@ export async function placeOrder(
         p_discount_code: data.discountCode || null,
         p_allergies_confirmed: true,
         p_notes: data.notes || null,
-        p_replace_order: (cart!.replaces_order_id as string | null) ?? null,
+        p_replace_order: replacing,
       });
       if (error) throw error;
+      check(await supabase.from("carts").delete().eq("household_id", householdId).eq("menu_week_id", data.weekId));
+
+      let change:
+        | { kind: "settled" | "charged" | "refunded" | "client_secret"; amountCents?: number; clientSecret?: string }
+        | undefined;
+      if (replacing) {
+        try {
+          change = await getPaymentProvider().settleOrderChange(orderId as string, user.id);
+        } catch (e) {
+          console.error("settling a changed order failed", { message: (e as Error).message });
+          change = { kind: "settled" };
+        }
+      }
       const order = check(
         await supabase
           .from("orders")
@@ -519,8 +546,7 @@ export async function placeOrder(
           .eq("id", orderId as string)
           .single(),
       );
-      check(await supabase.from("carts").delete().eq("household_id", householdId).eq("menu_week_id", data.weekId));
-      refresh("/orders", "/account", "/order");
+      refresh("/orders", "/account", "/order", `/orders/${order.id}`);
       return {
         ok: true,
         data: {
@@ -528,33 +554,94 @@ export async function placeOrder(
           orderNumber: order.order_number as string,
           totalCents: order.total_cents as number,
           status: order.status as string,
+          change,
         },
       };
     },
   );
 }
 
-export async function payOrder(input: unknown): Promise<ActionResult> {
+/**
+ * The payment step for an order. Stripe: a PaymentIntent for exactly what's
+ * due (computed from the order, never sent by the client) and its client
+ * secret for the Payment Element. Mock (CI): marks it paid.
+ */
+export async function startPayment(
+  input: unknown,
+): Promise<
+  ActionResult<{ kind: "paid" | "nothing_due" | "client_secret"; clientSecret?: string; amountCents?: number }>
+> {
   return familyAction(
     { schema: z.object({ orderId: uuid }), input, limiter: "checkout" },
     async ({ orderId }, { supabase }) => {
       // RLS: the parent can only read their own household's orders.
       const { data: order } = await supabase.from("orders").select("id, status").eq("id", orderId).maybeSingle();
-      if (!order || order.status !== "pending_payment")
-        return fail("validation", "This order isn't waiting for payment.");
-      const result = await getPaymentProvider().payOrder(orderId);
-      if (!result.ok) return fail("validation", result.message);
-      refresh("/orders", `/orders/${orderId}`, "/account");
+      if (!order) return fail("validation", "Order not found.");
+      if (order.status !== "pending_payment") return { ok: true, data: { kind: "nothing_due" as const } };
+      try {
+        const step = await getPaymentProvider().startOrderPayment(orderId);
+        if (step.kind === "paid") refresh("/orders", `/orders/${orderId}`, "/account");
+        return { ok: true, data: step };
+      } catch (e) {
+        console.error("starting a payment failed", { message: (e as Error).message });
+        return fail("unknown", "We couldn't start the payment. Please try again in a moment.");
+      }
     },
   );
 }
 
+/** Where is this order's payment? (The processing screen polls this; webhooks decide.) */
+export async function orderPaymentStatus(
+  input: unknown,
+): Promise<ActionResult<{ status: string; paid: boolean; error: string | null }>> {
+  return familyAction({ schema: z.object({ orderId: uuid }), input }, async ({ orderId }, { supabase }) => {
+    const { data: owned } = await supabase.from("orders").select("status").eq("id", orderId).maybeSingle();
+    if (owned?.status === "pending_payment") {
+      await getPaymentProvider()
+        .reconcile(orderId)
+        .catch(() => undefined);
+    }
+    const { data: order } = await supabase
+      .from("orders")
+      .select("status, last_payment_error, payment_failed_at")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (!order) return fail("validation", "Order not found.");
+    return {
+      ok: true,
+      data: {
+        status: order.status as string,
+        paid: order.status === "paid",
+        error: (order.last_payment_error as string | null) ?? null,
+      },
+    };
+  });
+}
+
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
+/** Cancel before cutoff; anything already paid is refunded in full (refund policy). */
 export async function cancelOrder(input: unknown): Promise<ActionResult> {
-  return familyAction({ schema: z.object({ orderId: uuid }), input }, async ({ orderId }, { supabase }) => {
+  return familyAction({ schema: z.object({ orderId: uuid }), input }, async ({ orderId }, { supabase, user }) => {
     const { error } = await supabase.rpc("cancel_family_order", { p_order: orderId });
     if (error) throw error;
+    const { data: o } = await supabase
+      .from("orders")
+      .select("amount_paid_cents, amount_refunded_cents")
+      .eq("id", orderId)
+      .single();
+    const net = (o?.amount_paid_cents ?? 0) - (o?.amount_refunded_cents ?? 0);
+    if (net > 0) {
+      // Service role: refunds are recorded by the server, not by the family;
+      // the parent's ownership was proven by cancel_family_order above.
+      const admin = createAdminClient();
+      const { data: row } = await admin
+        .from("order_refunds")
+        .insert({ order_id: orderId, amount_cents: net, reason: "Cancelled before cutoff", requested_by: user.id })
+        .select("id")
+        .single();
+      if (row) await getPaymentProvider().executeRefund(row.id as string);
+    }
     refresh("/orders", `/orders/${orderId}`, "/account", "/order");
   });
 }
@@ -604,9 +691,15 @@ export async function modifyOrder(input: unknown): Promise<ActionResult<{ weekId
   );
 }
 
-// ─── Subscription (Stripe connects in Phase 6) ───────────────────────────────
+// ─── Subscription (Stripe Billing) ───────────────────────────────────────────
 
-export async function choosePlan(input: unknown): Promise<ActionResult> {
+/**
+ * Pick a plan: an `incomplete` subscription, then the provider's payment
+ * step (Stripe: client secret for the first invoice; the webhook activates it).
+ */
+export async function choosePlan(
+  input: unknown,
+): Promise<ActionResult<{ kind: "active" | "client_secret"; clientSecret?: string; amountCents?: number }>> {
   return familyAction(
     { schema: z.object({ planId: uuid }), input, limiter: "checkout" },
     async ({ planId }, { supabase, householdId }) => {
@@ -615,20 +708,26 @@ export async function choosePlan(input: unknown): Promise<ActionResult> {
         p_plan: planId,
       });
       if (error) throw error;
-      const result = await getPaymentProvider().startSubscription(subId as string);
-      if (!result.ok) return fail("validation", result.message);
       check(
         await supabase
           .from("households")
           .update({ ordering_preference: "subscription", preferred_plan_id: planId })
           .eq("id", householdId),
       );
-      refresh("/subscription", "/order", "/account");
+      try {
+        const step = await getPaymentProvider().startSubscription(subId as string);
+        refresh("/subscription", "/order", "/account");
+        return { ok: true, data: step };
+      } catch (e) {
+        console.error("starting a subscription failed", { message: (e as Error).message });
+        return fail("unknown", "We couldn't start your plan. Please try again in a moment.");
+      }
     },
   );
 }
 
-export async function setWeekSkip(input: unknown): Promise<ActionResult> {
+/** Skip / unskip a week: the DB enforces the plan's rules, then Stripe credits the next invoice. */
+export async function setWeekSkip(input: unknown): Promise<ActionResult<{ creditCents: number }>> {
   return familyAction(
     { schema: z.object({ subscriptionId: uuid, weekId: uuid, skip: z.boolean() }), input },
     async ({ subscriptionId, weekId, skip }, { supabase }) => {
@@ -638,10 +737,26 @@ export async function setWeekSkip(input: unknown): Promise<ActionResult> {
         p_skip: skip,
       });
       if (error) throw error;
+      let creditCents = 0;
+      try {
+        creditCents = await getPaymentProvider().applySkipCredit(subscriptionId, weekId, skip);
+      } catch (e) {
+        // Put the week back the way it was so the DB and Stripe agree.
+        await supabase.rpc("set_subscription_week_skip", {
+          p_subscription: subscriptionId,
+          p_week: weekId,
+          p_skip: !skip,
+        });
+        console.error("skip credit failed", { message: (e as Error).message });
+        return fail("unknown", "We couldn't update this week. Please try again.");
+      }
       refresh("/subscription", "/order", "/account");
+      return { ok: true, data: { creditCents } };
     },
   );
 }
+
+const REVERSE = { pause: "resume", resume: null, cancel: "reactivate", reactivate: "cancel" } as const;
 
 export async function changeSubscription(input: unknown): Promise<ActionResult> {
   return familyAction(
@@ -657,24 +772,113 @@ export async function changeSubscription(input: unknown): Promise<ActionResult> 
       input,
     },
     async ({ subscriptionId, action, until }, { supabase }) => {
+      // The database checks the plan's rules (pause allowed, minimum commitment).
+      const untilIso = until ? `${until}T12:00:00Z` : null;
       const { error } = await supabase.rpc("request_subscription_change", {
         p_subscription: subscriptionId,
         p_action: action,
-        p_until: until ? `${until}T12:00:00Z` : null,
+        p_until: untilIso,
       });
       if (error) throw error;
+      const provider = getPaymentProvider();
+      try {
+        if (action === "pause") await provider.setPause(subscriptionId, new Date(untilIso!));
+        if (action === "resume") await provider.setPause(subscriptionId, null);
+        if (action === "cancel") await provider.setCancelAtPeriodEnd(subscriptionId, true);
+        if (action === "reactivate") await provider.setCancelAtPeriodEnd(subscriptionId, false);
+      } catch (e) {
+        const back = REVERSE[action];
+        if (back)
+          await supabase.rpc("request_subscription_change", {
+            p_subscription: subscriptionId,
+            p_action: back,
+            p_until: null,
+          });
+        console.error("subscription change failed", { message: (e as Error).message });
+        return fail("unknown", "We couldn't update your plan. Please try again.");
+      }
       refresh("/subscription", "/order", "/account");
     },
   );
 }
 
+/**
+ * Switch plan. No proration: it applies now and the next bill uses the new
+ * price; nothing is charged or credited for the current period (the UI says so).
+ */
 export async function changePlan(input: unknown): Promise<ActionResult> {
   return familyAction(
     { schema: z.object({ subscriptionId: uuid, planId: uuid }), input },
     async ({ subscriptionId, planId }, { supabase }) => {
+      const { data: current } = await supabase
+        .from("subscriptions")
+        .select("plan_id")
+        .eq("id", subscriptionId)
+        .maybeSingle();
+      if (!current) return fail("validation", "Subscription not found.");
       const { error } = await supabase.rpc("request_plan_change", { p_subscription: subscriptionId, p_plan: planId });
       if (error) throw error;
+      try {
+        await getPaymentProvider().changePlanOrQuantity(subscriptionId, { planId });
+      } catch (e) {
+        // Clear the pending switch (asking for the current plan clears it).
+        await supabase.rpc("request_plan_change", { p_subscription: subscriptionId, p_plan: current.plan_id });
+        console.error("plan change failed", { message: (e as Error).message });
+        return fail("unknown", "We couldn't switch your plan. Please try again.");
+      }
       refresh("/subscription");
     },
   );
+}
+
+/** Per-child plans: bill for the current number of kids (same no-proration rule). */
+export async function syncPlanQuantity(input: unknown): Promise<ActionResult<{ quantity: number }>> {
+  return familyAction(
+    { schema: z.object({ subscriptionId: uuid }), input },
+    async ({ subscriptionId }, { supabase, householdId }) => {
+      // RLS: only this household's subscription is visible.
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("id, plans!subscriptions_plan_id_fkey ( allowance_unit )")
+        .eq("id", subscriptionId)
+        .maybeSingle();
+      if (!sub) return fail("validation", "Subscription not found.");
+      const { count } = await supabase
+        .from("children")
+        .select("id", { count: "exact", head: true })
+        .eq("household_id", householdId)
+        .is("archived_at", null);
+      const quantity = Math.max(count ?? 1, 1);
+      await getPaymentProvider().changePlanOrQuantity(subscriptionId, { quantity });
+      refresh("/subscription");
+      return { ok: true, data: { quantity } };
+    },
+  );
+}
+
+/** Stripe Customer Portal for cards and receipts (plan changes stay in-app). */
+export async function openBillingPortal(): Promise<ActionResult<{ url: string | null }>> {
+  return familyAction({ schema: z.undefined(), input: undefined }, async (_d, { householdId }) => {
+    try {
+      const url = await getPaymentProvider().portalUrl(householdId, "/subscription");
+      return { ok: true, data: { url } };
+    } catch (e) {
+      console.error("billing portal failed", { message: (e as Error).message });
+      return fail("unknown", "Billing settings aren't available right now.");
+    }
+  });
+}
+
+/** The household's newest plan status (the plan "processing" screen polls this). */
+export async function planStatus(): Promise<ActionResult<{ status: string | null }>> {
+  return familyAction({ schema: z.undefined(), input: undefined }, async (_d, { supabase, householdId }) => {
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("household_id", householdId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { ok: true, data: { status: (data?.status as string | null) ?? null } };
+  });
 }

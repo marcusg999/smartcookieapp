@@ -21,9 +21,12 @@ export const SONNER_STYLE_HASHES = [
   "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
 ];
 
+// Stripe.js directives from docs.stripe.com/security/guide (Phase 6 check):
+// *.js.stripe.com lets Stripe start frames on separate origins; hooks.stripe.com
+// hosts 3D Secure challenges.
 const STRIPE = {
-  script: ["https://js.stripe.com"],
-  frame: ["https://js.stripe.com", "https://hooks.stripe.com"],
+  script: ["https://js.stripe.com", "https://*.js.stripe.com"],
+  frame: ["https://js.stripe.com", "https://*.js.stripe.com", "https://hooks.stripe.com"],
   connect: ["https://api.stripe.com"],
   img: ["https://*.stripe.com"],
   // Server actions redirect to hosted Checkout / Customer Portal. Chrome

@@ -40,7 +40,17 @@ const schema = z.object({
   ordering_enabled: z.boolean(),
   ordering_paused_message: z.string().trim().min(1).max(300),
   pilot_mode: z.boolean(),
-  tax_settings: z.object({ enabled: z.boolean(), use_stripe_tax: z.boolean() }),
+  tax_settings: z.object({
+    enabled: z.boolean(),
+    use_stripe_tax: z.boolean(),
+    // Flat rate in basis points (725 = 7.25%) when not using Stripe Tax.
+    rate_bps: z.number().int().min(0).max(2000).default(0),
+  }),
+  // Largest single refund ops staff may issue (owners are unlimited).
+  ops_refund_limit_cents: z.number().int().min(0).max(1_000_000),
+  // Phase 7: day of the month school invoices go out; overdue suspension.
+  school_invoice_day: z.number().int().min(1).max(28),
+  school_overdue_suspend_days: z.number().int().min(1).max(120).nullable(),
   logo_path: z.string().max(300).nullable(),
 });
 
@@ -52,9 +62,14 @@ export async function saveSettings(input: SettingsInput) {
     async (data, { user, supabase }) => {
       const problems = brandContrastProblems(data.brand_colors);
       if (problems.length) return fail("validation", problems[0]!, { brand_colors: problems.join(" ") });
-      const current = check(await supabase.from("site_settings").select("tax_settings").eq("id", true).single());
-      // Tax/payment settings need a fresh step-up (CLAUDE.md §5.5).
-      if (JSON.stringify(current.tax_settings) !== JSON.stringify(data.tax_settings)) {
+      const current = check(
+        await supabase.from("site_settings").select("tax_settings, ops_refund_limit_cents").eq("id", true).single(),
+      );
+      // Tax and refund-limit (payment) settings need a fresh step-up (CLAUDE.md §5.5).
+      if (
+        JSON.stringify(current.tax_settings) !== JSON.stringify(data.tax_settings) ||
+        current.ops_refund_limit_cents !== data.ops_refund_limit_cents
+      ) {
         const stepUp = requireRecentReauth(user);
         if (stepUp) return stepUp;
       }

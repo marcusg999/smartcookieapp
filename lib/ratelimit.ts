@@ -13,6 +13,7 @@ import { env } from "@/lib/env";
  *   checkout     10 / minute / user
  *   adminMutation 60 / minute / user
  *   familyMutation 90 / minute / user  cart edits, children, favourites
+ *   schoolMutation 60 / minute / user  school portal changes
  *   codeCheck      8 / minute / user or IP  discount and pilot codes (no guessing)
  *
  * Usage:
@@ -26,6 +27,7 @@ export const LIMITS = {
   checkout: { tokens: 10, window: "1 m" },
   adminMutation: { tokens: 60, window: "1 m" },
   familyMutation: { tokens: 90, window: "1 m" },
+  schoolMutation: { tokens: 60, window: "1 m" },
   codeCheck: { tokens: 8, window: "1 m" },
 } as const satisfies Record<string, { tokens: number; window: `${number} ${"s" | "m" | "h"}` }>;
 

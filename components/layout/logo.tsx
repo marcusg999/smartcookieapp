@@ -2,13 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { ViewTransition } from "react";
 
-import { CookieMark } from "@/components/art/cartoons";
 import { getPublicSettings } from "@/lib/content/settings";
 import { cn } from "@/lib/utils";
 
 /**
  * The brand mark: the owner's uploaded logo (Settings → Logo) or, until one
- * is uploaded, the cookie mascot + business name. Named view transition, so
+ * is uploaded, the shipped Smart Cookie logo (public/brand) + business name. Named view transition, so
  * the logo stays put while pages change around it.
  */
 export async function Logo({ href = "/", className, label }: { href?: string; className?: string; label?: string }) {
@@ -35,7 +34,14 @@ export async function Logo({ href = "/", className, label }: { href?: string; cl
           />
         ) : (
           <>
-            <CookieMark className="size-9 transition-transform duration-300 group-hover:-rotate-12" />
+            <Image
+              src="/brand/logo-96.webp"
+              alt=""
+              width={96}
+              height={96}
+              className="size-11 transition-transform duration-300 group-hover:-rotate-12"
+              priority
+            />
             <span>{name}</span>
           </>
         )}

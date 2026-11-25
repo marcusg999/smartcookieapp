@@ -3,10 +3,10 @@
 import { Check, CheckCircle2, Loader2, MapPin, PartyPopper, School, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { payOrder, placeOrder, previewDiscount, saveNamedOrder } from "@/app/(family)/actions";
+import { orderPaymentStatus, placeOrder, previewDiscount, saveNamedOrder, startPayment } from "@/app/(family)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCents } from "@/lib/money";
@@ -15,6 +15,7 @@ import { formatDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 import { AllergyChips, fmt, type Copy } from "./kit";
+import { StripePayment } from "./stripe-payment";
 
 type Kid = { id: string; first_name: string; allergies: ChildAllergy[]; school_id: string | null };
 type Address = { id: string; label: string; zone: (ZoneFees & { name: string }) | null; is_default: boolean };
@@ -85,6 +86,11 @@ export function CheckoutFlow({
       });
       if (!res.ok) return void toast.error(res.message);
       setStep("payment");
+      const change = res.data!.change;
+      if (change?.kind === "charged")
+        toast.success(fmt(copy.change_charged, { amount: formatCents(change.amountCents ?? 0) }));
+      if (change?.kind === "refunded")
+        toast.success(fmt(copy.change_refunded, { amount: formatCents(change.amountCents ?? 0) }));
       // Payment renders from the saved order, so a refresh never loses it.
       router.replace(`/checkout?order=${res.data!.orderId}`);
     });
@@ -392,92 +398,173 @@ function Totals({
   );
 }
 
-/** Step 4: pay for a placed order (or celebrate a fully included one). */
+/**
+ * Step 4: pay for a placed order. Stripe: the Payment Element for exactly
+ * what's owed (the server created the PaymentIntent), then a "processing"
+ * screen until the webhook marks the order paid. Mock (CI): one button.
+ */
 export function PaymentPanel({
   copy,
   placed,
   lines,
   replacing,
   testMode,
+  returnUrl,
+  redirected,
 }: {
   copy: Copy;
-  placed: { orderId: string; orderNumber: string; totalCents: number; status: string };
+  placed: { orderId: string; orderNumber: string; dueCents: number; status: string };
   lines: CartLine[];
   replacing: boolean;
   testMode: boolean;
+  returnUrl: string;
+  redirected: boolean;
 }) {
   const router = useRouter();
-  const [paid, setPaid] = useState(placed.status !== "pending_payment");
+  const [phase, setPhase] = useState<"pay" | "card" | "processing" | "paid" | "failed">(
+    placed.status !== "pending_payment" ? "paid" : redirected ? "processing" : "pay",
+  );
+  const [secret, setSecret] = useState<{ clientSecret: string; amountCents: number } | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
   const [saveName, setSaveName] = useState("");
   const [pending, start] = useTransition();
+  const begun = useRef(false);
+
+  const begin = () =>
+    start(async () => {
+      const res = await startPayment({ orderId: placed.orderId });
+      if (!res.ok) return void toast.error(res.message);
+      if (res.data!.kind === "client_secret") {
+        setSecret({ clientSecret: res.data!.clientSecret!, amountCents: res.data!.amountCents! });
+        setPhase("card");
+      } else setPhase("paid");
+    });
+
+  // Real payments: open the card form straight away (no extra tap).
+  useEffect(() => {
+    if (!testMode && phase === "pay" && !begun.current) {
+      begun.current = true;
+      begin();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Processing: the webhook decides. Poll until the order is paid (or failed).
+  useEffect(() => {
+    if (phase !== "processing") return;
+    let tries = 0;
+    const id = setInterval(async () => {
+      tries++;
+      const res = await orderPaymentStatus({ orderId: placed.orderId });
+      if (res.ok && res.data?.paid) {
+        clearInterval(id);
+        setPhase("paid");
+        router.refresh();
+      } else if (res.ok && res.data?.error && tries > 3) {
+        clearInterval(id);
+        setFailure(res.data.error);
+        setPhase("failed");
+      } else if (tries > 40) {
+        clearInterval(id);
+      }
+    }, 1500);
+    return () => clearInterval(id);
+  }, [phase, placed.orderId, router]);
+
+  const paid = phase === "paid";
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {
-        <section className="space-y-5">
-          {paid ? (
-            <div className="rounded-3xl border-2 border-ink bg-orange p-6 text-center shadow-ink-lg">
-              <PartyPopper aria-hidden="true" className="mx-auto size-12 animate-[pop_.5s_ease-out]" />
-              <h2 className="mt-2 text-4xl font-black">{copy.done_title}</h2>
-              <p className="mt-2">{copy.done_body}</p>
-              <p className="mt-3 font-black">{placed.orderNumber}</p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border-2 border-ink bg-paper p-6 shadow-ink-lg">
-              <h2 className="text-3xl font-black">{copy.pay_title}</h2>
-              <p className="mt-2">{fmt(copy.pay_body, { number: placed.orderNumber })}</p>
-              <p className="mt-4 text-4xl font-black">{formatCents(placed.totalCents)}</p>
-              <Button
-                size="lg"
-                className="mt-4 w-full"
-                disabled={pending}
-                onClick={() =>
-                  start(async () => {
-                    const res = await payOrder({ orderId: placed.orderId });
-                    if (!res.ok) return void toast.error(res.message);
-                    setPaid(true);
-                  })
-                }
-              >
-                {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
-                {fmt(copy.pay_button, { amount: formatCents(placed.totalCents) })}
-              </Button>
-              {testMode ? <p className="mt-2 text-center text-xs text-muted-foreground">{copy.pay_test_note}</p> : null}
-            </div>
-          )}
-          {placed.totalCents === 0 ? <p className="text-center text-sm">{copy.nothing_to_pay}</p> : null}
-          {paid && !replacing ? (
-            <form
-              className="flex items-end gap-2 rounded-2xl border-2 border-dashed border-ink p-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                start(async () => {
-                  const res = await saveNamedOrder({ name: saveName, lines });
-                  if (!res.ok) return void toast.error(res.message);
-                  toast.success(copy.save_combo);
-                  setSaveName("");
-                });
-              }}
-            >
-              <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
-                {copy.save_combo}
-                <Input value={saveName} onChange={(e) => setSaveName(e.target.value)} maxLength={80} required />
-              </label>
-              <Button type="submit" variant="outline" disabled={pending}>
-                <Check aria-hidden="true" />
-              </Button>
-            </form>
-          ) : null}
-          <div className="flex justify-center">
-            <Button
-              size="lg"
-              variant={paid ? "default" : "outline"}
-              onClick={() => router.push(`/orders/${placed.orderId}`)}
-            >
-              {copy.view_order}
-            </Button>
+      <section className="space-y-5">
+        {paid ? (
+          <div className="rounded-3xl border-2 border-ink bg-orange p-6 text-center shadow-ink-lg">
+            <PartyPopper aria-hidden="true" className="mx-auto size-12 animate-[pop_.5s_ease-out]" />
+            <h2 className="mt-2 text-4xl font-black">{copy.done_title}</h2>
+            <p className="mt-2">{copy.done_body}</p>
+            <p className="mt-3 font-black">{placed.orderNumber}</p>
           </div>
-        </section>
-      }
+        ) : phase === "processing" ? (
+          <div role="status" className="rounded-2xl border-2 border-ink bg-paper p-6 text-center shadow-ink-lg">
+            <Loader2 aria-hidden="true" className="mx-auto size-10 animate-spin" />
+            <h2 className="mt-3 text-2xl font-black">{copy.processing}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{copy.processing_body}</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border-2 border-ink bg-paper p-6 shadow-ink-lg">
+            <h2 className="text-3xl font-black">{copy.pay_title}</h2>
+            <p className="mt-2">{fmt(copy.pay_body, { number: placed.orderNumber })}</p>
+            <p className="mt-4 text-4xl font-black">{formatCents(secret?.amountCents ?? placed.dueCents)}</p>
+            {phase === "failed" && failure ? (
+              <p
+                role="alert"
+                className="mt-3 rounded-lg border-2 border-destructive p-3 text-sm font-semibold text-destructive"
+              >
+                {fmt(copy.payment_failed, { reason: failure })}
+              </p>
+            ) : null}
+            {phase === "card" && secret ? (
+              <div className="mt-5">
+                <StripePayment
+                  clientSecret={secret.clientSecret}
+                  amountLabel={fmt(copy.pay_button, { amount: formatCents(secret.amountCents) })}
+                  returnUrl={returnUrl}
+                  copy={copy}
+                  onConfirmed={() => setPhase("processing")}
+                />
+              </div>
+            ) : testMode ? (
+              <>
+                <Button size="lg" className="mt-4 w-full" disabled={pending} onClick={begin}>
+                  {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+                  {fmt(copy.pay_button, { amount: formatCents(placed.dueCents) })}
+                </Button>
+                <p className="mt-2 text-center text-xs text-muted-foreground">{copy.pay_test_note}</p>
+              </>
+            ) : (
+              <div className="mt-4 flex justify-center">
+                {pending ? (
+                  <Loader2 aria-hidden="true" className="size-8 animate-spin" />
+                ) : (
+                  <Button size="lg" onClick={begin}>
+                    {copy.retry_payment}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {placed.dueCents === 0 && !paid ? <p className="text-center text-sm">{copy.nothing_to_pay}</p> : null}
+        {paid && !replacing ? (
+          <form
+            className="flex items-end gap-2 rounded-2xl border-2 border-dashed border-ink p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              start(async () => {
+                const res = await saveNamedOrder({ name: saveName, lines });
+                if (!res.ok) return void toast.error(res.message);
+                toast.success(copy.save_combo);
+                setSaveName("");
+              });
+            }}
+          >
+            <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
+              {copy.save_combo}
+              <Input value={saveName} onChange={(e) => setSaveName(e.target.value)} maxLength={80} required />
+            </label>
+            <Button type="submit" variant="outline" disabled={pending}>
+              <Check aria-hidden="true" />
+            </Button>
+          </form>
+        ) : null}
+        <div className="flex justify-center">
+          <Button
+            size="lg"
+            variant={paid ? "default" : "outline"}
+            onClick={() => router.push(`/orders/${placed.orderId}`)}
+          >
+            {copy.view_order}
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

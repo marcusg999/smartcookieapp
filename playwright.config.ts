@@ -21,6 +21,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "off",
+    // Local runs behind an HTTPS-intercepting proxy (Stripe.js, real test
+    // payments): PLAYWRIGHT_PROXY=http://127.0.0.1:PORT. Never set in CI.
+    ...(process.env.PLAYWRIGHT_PROXY
+      ? { proxy: { server: process.env.PLAYWRIGHT_PROXY, bypass: "localhost,127.0.0.1" }, ignoreHTTPSErrors: true }
+      : {}),
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   projects: [

@@ -9,7 +9,12 @@ import { PASSWORD } from "./supabase";
 export const test = base.extend({
   context: async ({ context }, use) => {
     const ip = `198.51.100.${Math.floor(Math.random() * 250) + 1}`;
-    await context.setExtraHTTPHeaders({ "x-forwarded-for": ip });
+    // Only on requests to the app: a custom header on third-party requests
+    // (Stripe.js, hCaptcha) would fail their CORS preflight.
+    await context.route(
+      (url) => url.hostname === "localhost" || url.hostname === "127.0.0.1",
+      (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": ip } }),
+    );
     await use(context);
   },
 });

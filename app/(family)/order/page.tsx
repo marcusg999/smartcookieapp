@@ -100,6 +100,17 @@ export default async function OrderPage({ searchParams }: PageProps<"/order">) {
           {copy.closed}
         </p>
       ) : null}
+      {sub && (["past_due", "unpaid"].includes(sub.status) || sub.payment_failed_at) ? (
+        <p
+          role="alert"
+          className="mb-4 rounded-xl border-2 border-destructive bg-paper px-4 py-2 font-semibold text-destructive"
+        >
+          {c.text("sub.past_due_banner")}{" "}
+          <Link href="/subscription" className="underline">
+            {c.text("sub.update_card")}
+          </Link>
+        </p>
+      ) : null}
       <header className="mb-5">
         <h1 className="text-4xl leading-[0.95] font-black md:text-6xl">
           {fmt(copy.title, { date: formatDay(week.week_start, { month: "long", day: "numeric" }) })}

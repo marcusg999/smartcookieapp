@@ -22,6 +22,8 @@ pnpm dev                        # http://localhost:3000
 
 Emails (confirmations, magic links, invites) land in Mailpit at <http://127.0.0.1:54324>.
 
+**Payments (Stripe test mode):** with the placeholder keys from `.env.example`, payments run through a mock that behaves like Stripe's webhooks. To use real test mode, set your `sk_test_`/`pk_test_` keys and forward webhooks with `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe` (or `pnpm stripe:forward`). See [`docs/phase-6.md`](./docs/phase-6.md) for the go-live checklist.
+
 **Seed data (local only):** `pnpm db:reset` loads test accounts for every role (password `SmartCookie-local-2026!`), a sample menu, plans, zones and a school. The full list is in [`docs/phase-3.md`](./docs/phase-3.md). Staff accounts have TOTP pre-enrolled with the local-only secret `JBSWY3DPEHPK3PXP`.
 
 **First owner:** sign up at `/sign-up`, confirm the email, then run `pnpm owner:bootstrap you@example.com` and visit `/admin`. You'll be asked to set up an authenticator app. Further staff are invited from `/admin/staff`.

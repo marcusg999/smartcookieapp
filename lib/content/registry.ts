@@ -4,6 +4,8 @@
  * (seeded in supabase/seed.sql, edited in /admin/content); this registry only
  * describes each key so the admin can group and label them.
  */
+import { SCHOOL_CONTENT_GROUPS } from "./school-registry.ts";
+
 export type ContentType = "text" | "rich_text" | "image" | "json" | "cta";
 
 /** `default` is the launch copy: seeded into content_blocks (scripts/gen-content-seed.mjs). */
@@ -340,6 +342,23 @@ const FAMILY_CONTENT_GROUPS: ContentGroup[] = [
       ),
       t("checkout.view_order", "View order", "View order button"),
       t("checkout.save_combo", "Save these picks for next time", "Save combination prompt"),
+      t("checkout.processing", "Confirming your payment…", "Processing heading"),
+      t(
+        "checkout.processing_body",
+        "This takes a few seconds. You can leave this page; we'll email you.",
+        "Processing text",
+      ),
+      t("checkout.payment_failed", "That payment didn't go through: {reason}", "Payment failed (use {reason})"),
+      t("checkout.pay_error", "Something went wrong with the payment. Please try again.", "Generic payment error"),
+      t(
+        "checkout.secure_note",
+        "Payments are handled by Stripe. We never see your card number.",
+        "Secure payment note",
+      ),
+      t("checkout.retry_payment", "Show payment options", "Retry payment button"),
+      t("checkout.change_charged", "We charged {amount} for your changes.", "Change charged toast (use {amount})"),
+      t("checkout.change_refunded", "We refunded {amount} to your card.", "Change refunded toast (use {amount})"),
+      t("checkout.credit_applied", "Account credit", "Credit line label"),
     ],
   },
   {
@@ -388,6 +407,9 @@ const FAMILY_CONTENT_GROUPS: ContentGroup[] = [
       t("orders.allergies_confirmed", "Allergies confirmed {date}", "Allergy confirmation (use {date})"),
       t("orders.refund_policy", "Refund policy", "Refund policy link"),
       t("orders.reorder", "Order these again", "Reorder button"),
+      t("orders.payment_paid", "Paid {amount}", "Paid amount (use {amount})"),
+      t("orders.payment_refunded", "Refunded {amount}", "Refunded amount (use {amount})"),
+      t("orders.payment_error", "Payment problem: {reason}", "Payment error (use {reason})"),
       t("sub.title", "Your plan", "Subscription heading"),
       t("sub.none", "You're ordering à la carte. Subscribe and meals are included every week.", "No plan"),
       t("sub.choose", "Choose a plan", "Choose plan heading"),
@@ -411,7 +433,39 @@ const FAMILY_CONTENT_GROUPS: ContentGroup[] = [
       t("sub.change_pending", "Switching to {plan} from your next billing period.", "Pending change (use {plan})"),
       t("sub.current", "Current plan", "Current plan badge"),
       t("sub.skip_title", "Upcoming weeks", "Skip list heading"),
-      t("sub.billing_note", "Card details and receipts arrive with online payments.", "Billing note"),
+      t("sub.billing_note", "Cards and receipts are managed securely by Stripe.", "Billing note"),
+      t("sub.pay_title", "Start your plan", "First payment heading"),
+      t(
+        "sub.pay_body",
+        "Your first payment is {amount}. After that we bill automatically; skip, pause or cancel any time.",
+        "First payment text (use {amount})",
+      ),
+      t("sub.processing", "Starting your plan…", "Plan processing heading"),
+      t("sub.manage_billing", "Payment methods & receipts", "Billing portal button"),
+      t(
+        "sub.past_due_banner",
+        "Your last plan payment didn't go through. Update your card to keep meals included.",
+        "Past-due banner",
+      ),
+      t("sub.update_card", "Update card", "Update card button"),
+      t(
+        "sub.change_explain",
+        "Switching applies right away. Your next bill uses the new price; nothing extra is charged or credited for this period. Continue?",
+        "Plan change explanation (confirm)",
+      ),
+      t(
+        "sub.quantity_mismatch",
+        "Your plan pays for {count} kids, and you have {kids}.",
+        "Kids count mismatch (use {count} and {kids})",
+      ),
+      t("sub.sync_quantity", "Update plan to {kids} kids", "Sync kids button (use {kids})"),
+      t(
+        "sub.quantity_explain",
+        "The new number of kids applies right away and your next bill reflects it. Nothing extra is charged or credited for this period. Continue?",
+        "Kids change explanation (confirm)",
+      ),
+      t("sub.skip_credit", "Skipped. {amount} will come off your next bill.", "Skip credit toast (use {amount})"),
+      t("sub.unskip_debit", "Unskipped. The {amount} credit has been removed.", "Unskip toast (use {amount})"),
       t("fav.title", "Favourites", "Favourites heading"),
       t("fav.subtitle", "Tap the heart on any meal. Use them to fill a week in one tap.", "Favourites text"),
       t("fav.empty", "No favourites yet.", "Empty state"),
@@ -780,6 +834,7 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     ],
   },
   ...FAMILY_CONTENT_GROUPS,
+  ...SCHOOL_CONTENT_GROUPS,
 ];
 
 export const CONTENT_KEYS: string[] = CONTENT_GROUPS.flatMap((g) => g.items.map((i) => i.key));

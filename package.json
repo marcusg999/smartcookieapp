@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test --trace off",
     "audit": "pnpm audit --audit-level=high",
-    "icons": "node scripts/generate-icons.mjs",
+    "icons": "node scripts/generate-brand-assets.mjs",
     "supabase": "supabase",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
@@ -22,10 +22,13 @@
     "db:test": "supabase test db",
     "owner:bootstrap": "node --env-file-if-exists=.env.local scripts/owner-bootstrap.mts",
     "db:erd": "bash scripts/generate-erd.sh",
-    "content:seed": "node scripts/gen-content-seed.mts"
+    "content:seed": "node scripts/gen-content-seed.mts",
+    "stripe:forward": "NODE_USE_ENV_PROXY=1 node --env-file-if-exists=.env.local scripts/stripe-forward.mts"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.16.0",
+    "@stripe/react-stripe-js": "7.1.0",
+    "@stripe/stripe-js": "10.3.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
     "@tiptap/extension-link": "^3.35.0",

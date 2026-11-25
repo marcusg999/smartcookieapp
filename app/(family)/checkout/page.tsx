@@ -19,6 +19,7 @@ import {
   getZoneForZip,
   toPlanAllowance,
 } from "@/lib/family/queries";
+import { publicEnv } from "@/lib/env.public";
 import { normalizeLines } from "@/lib/ordering/logic";
 import { stripeMockMode } from "@/lib/stripe/server";
 import { formatDay } from "@/lib/time";
@@ -54,12 +55,18 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             placed={{
               orderId: order.id,
               orderNumber: order.order_number,
-              totalCents: order.total_cents,
+              dueCents: Math.max(order.total_cents - (order.amount_paid_cents - order.amount_refunded_cents), 0),
               status: order.status,
             }}
             lines={normalizeLines(lines)}
             replacing={false}
             testMode={stripeMockMode()}
+            returnUrl={new URL(`/checkout?order=${order.id}`, publicEnv.NEXT_PUBLIC_SITE_URL).toString()}
+            redirected={
+              sp.redirect_status === "succeeded" ||
+              sp.redirect_status === "processing" ||
+              typeof sp.payment_intent === "string"
+            }
           />
         </div>
       );

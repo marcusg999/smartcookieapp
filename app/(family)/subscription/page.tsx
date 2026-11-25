@@ -4,7 +4,8 @@ import { requireUser } from "@/lib/auth/guards";
 import { getContent } from "@/lib/content/content";
 import { getPublicSettings } from "@/lib/content/settings";
 import { describePlan } from "@/lib/family/plan-copy";
-import { getHousehold, getOrderableWeeks, getPlans, getSubscription } from "@/lib/family/queries";
+import { getChildren, getHousehold, getOrderableWeeks, getPlans, getSubscription } from "@/lib/family/queries";
+import { publicEnv } from "@/lib/env.public";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatDay, formatInZone, isPast, todayInZone } from "@/lib/time";
 
@@ -20,7 +21,9 @@ export default async function SubscriptionPage() {
     getOrderableWeeks(),
   ]);
   const tz = settings?.timezone ?? "America/Los_Angeles";
-  const sub = household ? await getSubscription(household.id) : null;
+  const [sub, kids] = household
+    ? await Promise.all([getSubscription(household.id), getChildren(household.id)])
+    : [null, []];
   const supabase = await createClient();
   const { data: allowances } = sub
     ? await supabase.from("subscription_allowances").select("menu_week_id, skipped").eq("subscription_id", sub.id)
@@ -52,6 +55,9 @@ export default async function SubscriptionPage() {
                   : null,
                 pendingPlanName: plans.find((p) => p.id === sub.pending_plan_id)?.name ?? null,
                 allowPause: sub.plan.allow_pause,
+                quantity: sub.quantity,
+                perChild: sub.plan.allowance_unit === "per_child",
+                pastDue: ["past_due", "unpaid"].includes(sub.status) || Boolean(sub.payment_failed_at),
               }
             : null
         }
@@ -61,6 +67,10 @@ export default async function SubscriptionPage() {
           skipped: skipped.has(w.id),
           canSkip: Boolean(sub?.plan.allow_skip),
         }))}
+        kidsCount={kids.length}
+        checkoutCopy={c.group("checkout.")}
+        returnUrl={new URL("/subscription", publicEnv.NEXT_PUBLIC_SITE_URL).toString()}
+        hasStripeCustomer={Boolean(household?.stripe_customer_id)}
         minPause={addDays(today, 7)}
         maxPause={addDays(today, 7 * 12)}
       />
