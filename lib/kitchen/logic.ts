@@ -82,7 +82,8 @@ export function whoFor(l: Line): string {
 
 /** Where it goes: "Room 4 · Sunflowers, Maple Grove Elementary" or the household. */
 export function destination(l: Line): string {
-  if (l.organization_name) return [l.classroom_name ?? l.dropoff_location, l.organization_name].filter(Boolean).join(", ");
+  if (l.organization_name)
+    return [l.classroom_name ?? l.dropoff_location, l.organization_name].filter(Boolean).join(", ");
   return l.household_name ?? "";
 }
 
@@ -140,7 +141,9 @@ export function cookList(lines: Line[]): CookRow[] {
     }
     rows.set(key, row);
   }
-  return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date) || b.total - a.total || a.item.localeCompare(b.item));
+  return [...rows.values()].sort(
+    (a, b) => a.date.localeCompare(b.date) || b.total - a.total || a.item.localeCompare(b.item),
+  );
 }
 
 /** "Turkey wrap: 42 total, 38 standard, 4 Wheat-free" */
@@ -158,7 +161,14 @@ const csvCell = (v: string | number) => {
 
 export function cookListCsv(rows: CookRow[]): string {
   const head = ["Delivery date", "Item", "Total", "Standard", "Allergy-modified", "Modifications"];
-  const body = rows.map((r) => [r.date, r.item, r.total, r.standard, r.modified, r.modifications.map((m) => `${m.count} ${m.label}`).join("; ")]);
+  const body = rows.map((r) => [
+    r.date,
+    r.item,
+    r.total,
+    r.standard,
+    r.modified,
+    r.modifications.map((m) => `${m.count} ${m.label}`).join("; "),
+  ]);
   return [head, ...body].map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }
 
@@ -189,7 +199,9 @@ export function allergyBoard(lines: Line[]): BoardEntry[] {
         childKey: key,
         name: l.child_id ? whoFor(l) : `${l.safe_for_allergens.join(" + ")}-safe meals`,
         place: destination(l),
-        allergens: l.child_id ? l.child_allergens : l.safe_for_allergens.map((name) => ({ name, severity: "allergy" as const })),
+        allergens: l.child_id
+          ? l.child_allergens
+          : l.safe_for_allergens.map((name) => ({ name, severity: "allergy" as const })),
         severe: hasSevere(l),
         meals: [],
         firstDate: l.delivery_date ?? "",
@@ -198,9 +210,11 @@ export function allergyBoard(lines: Line[]): BoardEntry[] {
     if ((l.delivery_date ?? "") < entry.firstDate) entry.firstDate = l.delivery_date ?? "";
     map.set(key, entry);
   }
-  for (const e of map.values()) e.meals.sort((a, b) => (a.line.delivery_date ?? "").localeCompare(b.line.delivery_date ?? ""));
+  for (const e of map.values())
+    e.meals.sort((a, b) => (a.line.delivery_date ?? "").localeCompare(b.line.delivery_date ?? ""));
   return [...map.values()].sort(
-    (a, b) => a.firstDate.localeCompare(b.firstDate) || Number(b.severe) - Number(a.severe) || a.name.localeCompare(b.name),
+    (a, b) =>
+      a.firstDate.localeCompare(b.firstDate) || Number(b.severe) - Number(a.severe) || a.name.localeCompare(b.name),
   );
 }
 
@@ -245,8 +259,12 @@ export function dietaryRollup(lines: Line[]): Rollup {
     badges: [...badges.entries()]
       .map(([name, perDay]) => ({ name, perDay, total: Object.values(perDay).reduce((s, n) => s + n, 0) }))
       .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)),
-    preferences: [...prefChildren.entries()].map(([name, s]) => ({ name, children: s.size })).sort((a, b) => b.children - a.children),
-    allergenMeals: [...allergenMeals.entries()].map(([name, meals]) => ({ name, meals })).sort((a, b) => b.meals - a.meals),
+    preferences: [...prefChildren.entries()]
+      .map(([name, s]) => ({ name, children: s.size }))
+      .sort((a, b) => b.children - a.children),
+    allergenMeals: [...allergenMeals.entries()]
+      .map(([name, meals]) => ({ name, meals }))
+      .sort((a, b) => b.meals - a.meals),
     allergenChildren: [...allergenChildren.entries()]
       .map(([name, e]) => ({ name, children: e.kids.size, severe: e.severe.size }))
       .sort((a, b) => b.children - a.children),
@@ -266,7 +284,10 @@ export type Summary = {
 };
 
 /** Summary tiles for This Week. `capacities` maps menu item id → { name, capacity }. */
-export function weekSummary(lines: Line[], capacities: Map<string, { name: string; capacity: number | null }>): Summary {
+export function weekSummary(
+  lines: Line[],
+  capacities: Map<string, { name: string; capacity: number | null }>,
+): Summary {
   const byDay = new Map<string, number>();
   let families = 0;
   let schools = 0;
@@ -291,7 +312,8 @@ export function weekSummary(lines: Line[], capacities: Map<string, { name: strin
     paid,
     invoiced,
     unpaid,
-    childrenWithAllergies: new Set(lines.filter((l) => l.child_id && l.child_allergens.length).map((l) => l.child_id)).size,
+    childrenWithAllergies: new Set(lines.filter((l) => l.child_id && l.child_allergens.length).map((l) => l.child_id))
+      .size,
     capacity: [...capacities.entries()]
       .map(([id, c]) => ({ item: c.name, used: used.get(id) ?? 0, capacity: c.capacity }))
       .filter((c) => c.used > 0 || c.capacity !== null)
@@ -433,7 +455,14 @@ export type OpsOrder = {
   household_name: string | null;
   organization_id: string | null;
   organization_name: string | null;
-  address: { line1?: string; line2?: string; city?: string; state?: string; zip?: string; delivery_notes?: string } | null;
+  address: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    delivery_notes?: string;
+  } | null;
   zone_name: string | null;
   zip: string | null;
   phone: string | null;
@@ -461,7 +490,12 @@ export type Stop = {
  * by ZIP, plus one stop per school. Bags: one per family order; schools by
  * meals per bag. Families choosing school drop-off ride with that school.
  */
-export function manifest(orders: OpsOrder[], lines: Line[], date: string, settings: Pick<KitchenSettings, "meals_per_bag">): Stop[] {
+export function manifest(
+  orders: OpsOrder[],
+  lines: Line[],
+  date: string,
+  settings: Pick<KitchenSettings, "meals_per_bag">,
+): Stop[] {
   const dayLines = lines.filter((l) => l.delivery_date === date);
   const mealsByOrder = new Map<string, number>();
   const schoolOf = new Map<string, string>();
@@ -484,10 +518,16 @@ export function manifest(orders: OpsOrder[], lines: Line[], date: string, settin
           key,
           kind: "school",
           zone: "Schools",
-          name: o.organization_name ?? school?.organization_name ?? dayLines.find((l) => l.organization_id === orgId)?.organization_name ?? "School",
+          name:
+            o.organization_name ??
+            school?.organization_name ??
+            dayLines.find((l) => l.organization_id === orgId)?.organization_name ??
+            "School",
           address: [a.line1, a.city, a.zip].filter(Boolean).join(", "),
           zip: o.zip ?? "",
-          notes: [o.dropoff?.entrance, o.dropoff?.window, o.dropoff?.contact, o.dropoff?.instructions].filter(Boolean).join(" · "),
+          notes: [o.dropoff?.entrance, o.dropoff?.window, o.dropoff?.contact, o.dropoff?.instructions]
+            .filter(Boolean)
+            .join(" · "),
           phone: o.phone ?? "",
           bags: 0,
           orderIds: [],
@@ -535,4 +575,70 @@ export function manifest(orders: OpsOrder[], lines: Line[], date: string, settin
  */
 export function ingredientRollup(): null {
   return null;
+}
+
+export const PAYMENT_LABEL: Record<string, string> = {
+  paid: "Paid",
+  invoiced: "Invoiced (school)",
+  pending_payment: "Unpaid",
+  partially_refunded: "Part refunded",
+  fulfilled: "Paid · delivered",
+};
+
+export type WeekRowData = {
+  key: string;
+  date: string;
+  destination: string;
+  orderId: string;
+  orderNumber: string;
+  customer: string;
+  children: string[];
+  items: string[];
+  flags: ChildAllergy[];
+  conflict: boolean;
+  modified: boolean;
+  school: boolean;
+  status: string;
+  notes: string | null;
+};
+
+/** One row per order per delivery day, for the This Week table. */
+export function weekRows(lines: Line[]): WeekRowData[] {
+  const rows = new Map<string, WeekRowData>();
+  for (const l of lines) {
+    const date = l.delivery_date ?? "";
+    const key = `${date}|${l.order_id}|${l.classroom_id ?? ""}`;
+    const school = isSchool(l);
+    const row =
+      rows.get(key) ??
+      ({
+        key,
+        date,
+        destination: school
+          ? [l.organization_name ?? "School", l.classroom_name ?? l.dropoff_location].filter(Boolean).join(" → ")
+          : `${l.zone_name ?? "Delivery"} → ${l.household_name ?? ""}`,
+        orderId: l.order_id,
+        orderNumber: l.order_number,
+        customer: l.household_name ?? l.organization_name ?? "",
+        children: [],
+        items: [],
+        flags: [],
+        conflict: false,
+        modified: false,
+        school,
+        status: l.order_status,
+        notes: l.order_notes,
+      } satisfies WeekRowData);
+    const who = l.child_first_name ? whoFor(l) : null;
+    if (who && !row.children.includes(who)) row.children.push(who);
+    row.items.push(`${who ? `${who}: ` : ""}${l.item_name}${l.quantity > 1 ? ` ×${l.quantity}` : ""}`);
+    for (const f of l.child_allergens) if (!row.flags.some((x) => x.name === f.name)) row.flags.push(f);
+    row.conflict ||= Boolean(l.conflict);
+    row.modified ||= isModified(l);
+    rows.set(key, row);
+  }
+  return [...rows.values()].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) || Number(a.school) - Number(b.school) || a.destination.localeCompare(b.destination),
+  );
 }

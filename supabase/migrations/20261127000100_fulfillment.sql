@@ -158,7 +158,7 @@ security definer
 set search_path = ''
 as $$
   select oi.id, o.id, o.order_number, o.status, o.source::text, o.fulfillment,
-    coalesce(oi.delivery_date, o.delivery_date), oi.menu_item_id, oi.item_name, oi.quantity,
+    coalesce(oi.delivery_date, o.delivery_date, wk.delivery_dates[1], wk.week_start), oi.menu_item_id, oi.item_name, oi.quantity,
     oi.allergens_contained, oi.may_contain, oi.badges, oi.safe_for_allergens,
     oi.allergy_override_id is not null, ao.reason,
     c.id, c.first_name, c.last_initial,
@@ -171,9 +171,11 @@ as $$
     m.reheat_instructions, m.use_by_days,
     case when c.id is not null then public._line_conflict(c.id, oi.menu_item_id, oi.allergens_contained, oi.may_contain) end,
     pc.checked_at, coalesce(p.full_name, 'staff'),
-    exists (select 1 from public.deliveries d where d.order_id = o.id and d.delivery_date = coalesce(oi.delivery_date, o.delivery_date))
+    exists (select 1 from public.deliveries d where d.order_id = o.id
+            and d.delivery_date = coalesce(oi.delivery_date, o.delivery_date, wk.delivery_dates[1], wk.week_start))
   from public.order_items oi
   join public.orders o on o.id = oi.order_id
+  join public.menu_weeks wk on wk.id = o.menu_week_id
   left join public.children c on c.id = oi.child_id
   left join public.classrooms cl on cl.id = coalesce(oi.classroom_id, c.classroom_id)
   left join public.organizations org on org.id = coalesce(o.organization_id, case when o.fulfillment = 'school_dropoff' then c.school_id end)

@@ -95,19 +95,38 @@ describe("cook list", () => {
       child_allergens: [{ name: "Sesame", severity: "severe" }],
     });
     expect(prepFor(l)).toEqual(["Sesame"]);
-    expect(cookList([l])[0]).toMatchObject({ standard: 0, modified: 1, modifications: [{ label: "Sesame-free", count: 1 }] });
+    expect(cookList([l])[0]).toMatchObject({
+      standard: 0,
+      modified: 1,
+      modifications: [{ label: "Sesame-free", count: 1 }],
+    });
   });
 
   it("an ordinary allergy that the meal doesn't involve needs no modification", () => {
-    const l = line({ child_id: "c1", allergens_contained: ["Milk"], child_allergens: [{ name: "Fish", severity: "allergy" }] });
+    const l = line({
+      child_id: "c1",
+      allergens_contained: ["Milk"],
+      child_allergens: [{ name: "Fish", severity: "allergy" }],
+    });
     expect(prepFor(l)).toEqual([]);
   });
 
   it("a may-contain match or an owner override must be prepared safe", () => {
-    expect(prepFor(line({ child_id: "c1", may_contain: ["Wheat"], allergens_contained: [], child_allergens: [{ name: "Wheat", severity: "allergy" }] }))).toEqual([
-      "Wheat",
-    ]);
-    expect(prepFor(line({ child_id: "c1", has_allergy_override: true, child_allergens: [{ name: "Wheat", severity: "allergy" }] }))).toEqual(["Wheat"]);
+    expect(
+      prepFor(
+        line({
+          child_id: "c1",
+          may_contain: ["Wheat"],
+          allergens_contained: [],
+          child_allergens: [{ name: "Wheat", severity: "allergy" }],
+        }),
+      ),
+    ).toEqual(["Wheat"]);
+    expect(
+      prepFor(
+        line({ child_id: "c1", has_allergy_override: true, child_allergens: [{ name: "Wheat", severity: "allergy" }] }),
+      ),
+    ).toEqual(["Wheat"]);
   });
 
   it("leaves out conflicts and (by default) unpaid orders", () => {
@@ -128,7 +147,12 @@ describe("allergy board", () => {
   it("lists children with allergies, severe first within a day, with their meals", () => {
     const board = allergyBoard([
       line({ child_id: "a", child_first_name: "Ava", child_allergens: [{ name: "Wheat", severity: "intolerance" }] }),
-      line({ child_id: "m", child_first_name: "Maya", child_last_initial: "P", child_allergens: [{ name: "Sesame", severity: "severe" }] }),
+      line({
+        child_id: "m",
+        child_first_name: "Maya",
+        child_last_initial: "P",
+        child_allergens: [{ name: "Sesame", severity: "severe" }],
+      }),
       line({ child_id: "x", child_first_name: "Xi" }),
       school({ safe_for_allergens: ["Peanuts"], quantity: 2 }),
     ]);
@@ -173,8 +197,19 @@ describe("labels", () => {
 describe("dietary roll-up and summary", () => {
   it("counts badges per day, preferences per child and allergen totals", () => {
     const r = dietaryRollup([
-      line({ badges: ["Vegetarian"], quantity: 2, child_id: "a", child_dietary: ["vegetarian"], child_allergens: [{ name: "Milk", severity: "severe" }] }),
-      line({ badges: ["Vegetarian", "Vegan"], delivery_date: "2026-12-01", child_id: "a", child_dietary: ["vegetarian"] }),
+      line({
+        badges: ["Vegetarian"],
+        quantity: 2,
+        child_id: "a",
+        child_dietary: ["vegetarian"],
+        child_allergens: [{ name: "Milk", severity: "severe" }],
+      }),
+      line({
+        badges: ["Vegetarian", "Vegan"],
+        delivery_date: "2026-12-01",
+        child_id: "a",
+        child_dietary: ["vegetarian"],
+      }),
     ]);
     expect(r.days).toEqual(["2026-11-30", "2026-12-01"]);
     expect(r.badges[0]).toEqual({ name: "Vegetarian", perDay: { "2026-11-30": 2, "2026-12-01": 1 }, total: 3 });
@@ -196,12 +231,20 @@ describe("dietary roll-up and summary", () => {
 describe("packing and manifest", () => {
   it("schools pack per classroom with bag counts; homes per route", () => {
     const { schools, routes } = packingLists(
-      [school({ quantity: 25 }), school({ quantity: 2, safe_for_allergens: ["Peanuts"] }), line({ order_number: "SC-9" })],
+      [
+        school({ quantity: 25 }),
+        school({ quantity: 2, safe_for_allergens: ["Peanuts"] }),
+        line({ order_number: "SC-9" }),
+      ],
       { meals_per_bag: 12 },
     );
     expect(schools[0]!.days[0]!.classrooms[0]).toMatchObject({ name: "Room 4", meals: 27, safe: 2, bags: 3 });
     expect(routes[0]!.zone).toBe("Pasadena");
-    expect(routes[0]!.days[0]!.households[0]).toMatchObject({ name: "The Patel household", orderNumber: "SC-9", bags: 1 });
+    expect(routes[0]!.days[0]!.households[0]).toMatchObject({
+      name: "The Patel household",
+      orderNumber: "SC-9",
+      bags: 1,
+    });
   });
 
   it("manifest: home stops by zone then ZIP, one stop per school", () => {

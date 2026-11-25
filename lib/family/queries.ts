@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 
 import { getUser } from "@/lib/auth/guards";
-import { getPublishedWeeks, type PublicWeek } from "@/lib/menu/queries";
+import { getPublishedWeeks, getWeekForPreview, type PublicWeek } from "@/lib/menu/queries";
 import type { CartLine, ChildAllergy, PlanAllowance, Severity, ZoneFees } from "@/lib/ordering/logic";
 import { createClient } from "@/lib/supabase/server";
 
@@ -413,13 +413,35 @@ export async function getWeekOrder(householdId: string, weekId: string) {
 /** Weeks a family can order right now (published, open, before cutoff), soonest first. */
 export async function getOrderableWeeks(now = new Date()): Promise<PublicWeek[]> {
   const weeks = await getPublishedWeeks().catch(() => []);
-  return weeks.filter(
+  const open = weeks.filter(
     (w) =>
       w.cutoff !== null &&
       Date.parse(w.cutoff) > now.getTime() &&
       (!w.ordering_opens_at || Date.parse(w.ordering_opens_at) <= now.getTime()),
   );
+  // Phase 8: an owner-approved late-order exception reopens a week for this
+  // household until it expires (its expiry is that week's cutoff here; the
+  // database re-checks it when the order is placed).
+  const late = await getLateExceptionWeeks(now).catch(() => []);
+  const merged = [...open.filter((w) => !late.some((l) => l.id === w.id)), ...late];
+  return merged.sort((a, b) => a.week_start.localeCompare(b.week_start));
 }
+
+const getLateExceptionWeeks = cache(async (now: Date): Promise<PublicWeek[]> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("late_order_exceptions")
+    .select("menu_week_id, expires_at")
+    .is("revoked_at", null)
+    .gt("expires_at", now.toISOString());
+  const weeks = await Promise.all(
+    (data ?? []).map(async (e) => {
+      const w = await getWeekForPreview(e.menu_week_id as string);
+      return w && (w.status === "published" || w.status === "closed") ? { ...w, cutoff: e.expires_at as string } : null;
+    }),
+  );
+  return weeks.filter((w) => w !== null) as PublicWeek[];
+});
 
 /** Last week's lines for "Repeat last week": the most recent live order before this week. */
 export async function getLastOrderLines(householdId: string, beforeWeekStart: string) {

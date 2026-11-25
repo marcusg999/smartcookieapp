@@ -35,9 +35,21 @@ type NavGroup = { label?: string; icon?: LucideIcon; items: NavItem[] };
 const NAV: NavGroup[] = [
   {
     items: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: STAFF, exact: true },
+      { href: "/admin", label: "This week", icon: LayoutDashboard, roles: STAFF, exact: true },
       { href: "/admin/orders", label: "Orders", icon: ClipboardList, roles: OPS },
-      { href: "/admin/kitchen", label: "Kitchen", icon: ChefHat, roles: STAFF },
+    ],
+  },
+  {
+    label: "Kitchen",
+    icon: ChefHat,
+    items: [
+      { href: "/admin/kitchen", label: "Cook list", roles: STAFF, exact: true },
+      { href: "/admin/kitchen/allergies", label: "Allergy board", roles: STAFF },
+      { href: "/admin/kitchen/dietary", label: "Dietary roll-up", roles: STAFF },
+      { href: "/admin/kitchen/labels", label: "Labels", roles: STAFF },
+      { href: "/admin/kitchen/packing", label: "Packing lists", roles: STAFF },
+      { href: "/admin/kitchen/manifest", label: "Delivery manifest", roles: OPS },
+      { href: "/admin/kitchen/payments", label: "Who has paid", roles: OPS },
     ],
   },
   {
@@ -97,7 +109,7 @@ export default async function AdminConsoleLayout({ children }: LayoutProps<"/adm
 
   return (
     <div className="flex min-h-full flex-1 flex-col lg:flex-row" data-shell="admin">
-      <aside className="border-b-2 border-ink bg-sidebar text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r-2 lg:border-b-0">
+      <aside className="border-b-2 border-ink bg-sidebar text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r-2 lg:border-b-0 print:hidden">
         <div className="flex h-16 items-center gap-2 px-4">
           <Logo href="/admin" label="Admin dashboard" />
           <span className="rounded border-2 border-ink bg-orange px-1.5 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase">
@@ -149,7 +161,7 @@ export default async function AdminConsoleLayout({ children }: LayoutProps<"/adm
           </Button>
         </form>
       </aside>
-      <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 lg:py-8">
+      <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 lg:py-8 print:p-0">
         <StepUpProvider factorId={factorId}>{children}</StepUpProvider>
       </main>
       <Toaster />

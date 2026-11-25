@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import { formatCents } from "@/lib/money";
 import { PageHeader, StatusPill } from "@/components/admin/page-header";
 import { requireStaffAAL2 } from "@/lib/auth/guards";
-import { formatInZone } from "@/lib/time";
+import { getKitchenWeeks } from "@/lib/kitchen/data";
+import { cutoffPassed } from "@/lib/kitchen/week";
+import { formatDay, formatInZone, isPast, todayInZone } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
 import { CustomerTools } from "./customer-tools";
+import { LateOrderTool } from "./late-order";
 
 export const metadata = { title: "Customer" };
 
@@ -22,7 +25,7 @@ type Child = {
 };
 
 export default async function CustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
-  await requireStaffAAL2(["ops", "owner"]);
+  const user = await requireStaffAAL2(["ops", "owner"]);
   const { id } = await params;
   const supabase = await createClient();
   const { data: h } = await supabase
@@ -216,6 +219,42 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
         )}
       </section>
       <CustomerTools householdId={h.id} notes={notes ?? []} credits={credits ?? []} />
+      {user.roles.includes("owner") ? <LateOrders householdId={h.id} /> : null}
     </div>
+  );
+}
+
+/** Weeks past cutoff (but not over) and this family's late-order exceptions. Owner only. */
+async function LateOrders({ householdId }: { householdId: string }) {
+  const [weeks, supabase] = await Promise.all([getKitchenWeeks(), createClient()]);
+  const today = todayInZone("America/Los_Angeles");
+  const eligible = weeks.filter(
+    (w) =>
+      (w.status === "published" || w.status === "closed") &&
+      cutoffPassed(w) &&
+      w.delivery_dates.some((d) => d >= today),
+  );
+  const { data: rows } = await supabase
+    .from("late_order_exceptions")
+    .select("id, menu_week_id, expires_at, reason, revoked_at")
+    .eq("household_id", householdId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const label = (id: string) => {
+    const w = weeks.find((x) => x.id === id);
+    return w ? `Week of ${formatDay(w.week_start, { month: "short", day: "numeric" })}` : "A past week";
+  };
+  return (
+    <LateOrderTool
+      householdId={householdId}
+      weeks={eligible.map((w) => ({ id: w.id, label: label(w.id) }))}
+      exceptions={(rows ?? []).map((r) => ({
+        id: r.id as string,
+        week_label: label(r.menu_week_id as string),
+        expires_at: formatInZone(r.expires_at as string, "America/Los_Angeles"),
+        reason: r.reason as string,
+        active: !r.revoked_at && !isPast(r.expires_at as string),
+      }))}
+    />
   );
 }

@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import { fail, type ActionResult } from "@/lib/auth/action-result";
 import { check, familyAction } from "@/lib/family/action";
-import { getChildren, getFavorites, getLastOrderLines, getZoneForZip } from "@/lib/family/queries";
-import { getPublishedWeeks, type PublicWeek } from "@/lib/menu/queries";
+import { getChildren, getFavorites, getLastOrderLines, getOrderableWeeks, getZoneForZip } from "@/lib/family/queries";
+import type { PublicWeek } from "@/lib/menu/queries";
 import { blockingAllergens, normalizeLines, planRepeat, type CartLine } from "@/lib/ordering/logic";
 import { getPaymentProvider } from "@/lib/payments/provider";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,7 +27,8 @@ function refresh(...paths: string[]) {
 }
 
 async function openWeek(weekId: string): Promise<PublicWeek | null> {
-  const weeks = await getPublishedWeeks().catch(() => []);
+  // Orderable weeks for this household (includes owner-approved late orders).
+  const weeks = await getOrderableWeeks().catch(() => []);
   const week = weeks.find((w) => w.id === weekId);
   if (!week || !week.cutoff || Date.parse(week.cutoff) <= Date.now()) return null;
   return week;

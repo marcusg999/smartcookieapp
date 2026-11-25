@@ -51,6 +51,13 @@ const schema = z.object({
   // Phase 7: day of the month school invoices go out; overdue suspension.
   school_invoice_day: z.number().int().min(1).max(28),
   school_overdue_suspend_days: z.number().int().min(1).max(120).nullable(),
+  // Phase 8: kitchen and labels.
+  kitchen_settings: z.object({
+    exclude_unpaid: z.boolean(),
+    label_sheet: z.enum(["avery_5163", "avery_5164"]),
+    use_by_days: z.number().int().min(1).max(14),
+    meals_per_bag: z.number().int().min(1).max(100),
+  }),
   logo_path: z.string().max(300).nullable(),
 });
 
