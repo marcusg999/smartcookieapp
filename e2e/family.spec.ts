@@ -218,11 +218,20 @@ test("a peanut-allergic child cannot be given a peanut meal (UI and database)", 
 test("repeat last week fills the cart in one tap from the account home", async ({ page }) => {
   const fam = await makeFamily([{ name: "Remy" }]);
   const week = await openWeek();
-  // A previous week's order (any earlier week; status doesn't matter for "last week").
+  // A previous week's order. Past orders always sit in a week parents can see
+  // (published / closed / fulfilled), never in an unpublished draft week, so
+  // use a closed week from earlier in the year (created once if needed).
+  await admin
+    .from("menu_weeks")
+    .upsert(
+      { week_start: "2026-01-05", delivery_dates: ["2026-01-05", "2026-01-06", "2026-01-07"], status: "closed" },
+      { onConflict: "week_start", ignoreDuplicates: true },
+    );
   const { data: earlier } = await admin
     .from("menu_weeks")
     .select("id, week_start, delivery_dates")
     .lt("week_start", week.week_start)
+    .in("status", ["published", "closed", "fulfilled"])
     .order("week_start", { ascending: false })
     .limit(1)
     .single();

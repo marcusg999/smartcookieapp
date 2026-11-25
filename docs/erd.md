@@ -1,6 +1,6 @@
 # Entity-relationship diagram
 
-Generated from the database by `pnpm db:erd` (2026-11-22). Do not edit by hand.
+Generated from the database by `pnpm db:erd` (2026-11-25). Do not edit by hand.
 Every table has Row Level Security enabled; see `supabase/migrations` and `docs/phase-3.md`.
 
 ```mermaid
@@ -95,6 +95,15 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
     timestamptz archived_at
+    enum school_link_status
+    timestamptz school_link_reviewed_at
+    uuid school_link_reviewed_by FK
+  }
+  classroom_allergy_counts {
+    uuid classroom_id PK
+    uuid allergen_id PK
+    integer count
+    timestamptz updated_at
   }
   classrooms {
     uuid id PK
@@ -221,6 +230,18 @@ erDiagram
     enum ordering_preference
     uuid preferred_plan_id FK
   }
+  invoice_lines {
+    uuid id PK
+    uuid invoice_id FK
+    uuid classroom_id FK
+    text group_label
+    date week_start
+    text description
+    integer quantity
+    integer amount_cents
+    text stripe_invoice_item_id
+    integer sort_order
+  }
   invoices {
     uuid id PK
     uuid organization_id FK
@@ -234,6 +255,20 @@ erDiagram
     date due_date
     timestamptz created_at
     timestamptz updated_at
+    text kind
+    text number
+    text hosted_invoice_url
+    integer subtotal_cents
+    integer tax_cents
+    integer amount_paid_cents
+    timestamptz paid_at
+    boolean paid_out_of_band
+    text payment_reference
+    timestamptz overdue_flagged_at
+    timestamptz reminder_3_at
+    timestamptz reminder_7_at
+    text last_error
+    uuid created_by FK
   }
   media {
     uuid id PK
@@ -353,6 +388,7 @@ erDiagram
     timestamptz sent_at
     uuid household_id FK
     jsonb payload
+    uuid organization_id FK
   }
   order_items {
     uuid id PK
@@ -371,6 +407,8 @@ erDiagram
     boolean covered_by_subscription
     uuid allergy_override_id FK
     timestamptz created_at
+    array safe_for_allergens
+    uuid invoice_id FK
   }
   order_payments {
     uuid id PK
@@ -433,6 +471,12 @@ erDiagram
     timestamptz expires_at
     timestamptz payment_failed_at
     text last_payment_error
+    uuid standing_order_id FK
+    boolean needs_review
+    array review_notes
+    timestamptz school_reviewed_at
+    uuid school_reviewed_by FK
+    text dropoff_location
   }
   organizations {
     uuid id PK
@@ -452,6 +496,11 @@ erDiagram
     jsonb address
     text dropoff_instructions
     text contact_phone
+    boolean use_school_pricing
+    timestamptz onboarded_at
+    text dropoff_entrance
+    text dropoff_contact
+    text dropoff_window
   }
   pages {
     uuid id PK
@@ -531,6 +580,14 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
   }
+  school_closures {
+    uuid id PK
+    uuid organization_id FK
+    date closure_date
+    text reason
+    uuid created_by FK
+    timestamptz created_at
+  }
   site_settings {
     boolean id PK
     text business_name
@@ -554,6 +611,19 @@ erDiagram
     text ordering_paused_message
     integer ops_refund_limit_cents
     text stripe_portal_configuration_id
+    smallint school_invoice_day
+    smallint school_overdue_suspend_days
+  }
+  standing_order_adjustments {
+    uuid id PK
+    uuid standing_order_id FK
+    date delivery_date
+    integer headcount
+    boolean skip
+    array items
+    text note
+    uuid updated_by FK
+    timestamptz updated_at
   }
   standing_orders {
     uuid id PK
@@ -571,6 +641,9 @@ erDiagram
     uuid created_by FK
     timestamptz created_at
     timestamptz updated_at
+    smallint buffer_percent
+    jsonb day_items
+    jsonb rotation
   }
   stripe_events {
     text event_id PK
@@ -650,6 +723,8 @@ erDiagram
   classrooms ||--o{ children : "classroom_id"
   households ||--o{ children : "household_id"
   organizations ||--o{ children : "school_id"
+  allergens ||--o{ classroom_allergy_counts : "allergen_id"
+  classrooms ||--o{ classroom_allergy_counts : "classroom_id"
   organizations ||--o{ classrooms : "organization_id"
   content_blocks ||--o{ content_versions : "block_id"
   households ||--o{ customer_notes : "household_id"
@@ -661,6 +736,8 @@ erDiagram
   addresses ||--o{ households : "default_address_id"
   delivery_zones ||--o{ households : "default_zone_id"
   plans ||--o{ households : "preferred_plan_id"
+  classrooms ||--o{ invoice_lines : "classroom_id"
+  invoices ||--o{ invoice_lines : "invoice_id"
   organizations ||--o{ invoices : "organization_id"
   allergens ||--o{ menu_item_allergens : "allergen_id"
   menu_items ||--o{ menu_item_allergens : "menu_item_id"
@@ -675,9 +752,11 @@ erDiagram
   menu_weeks ||--o{ menu_week_items : "menu_week_id"
   menu_templates ||--o{ menu_weeks : "generated_from_template_id"
   households ||--o{ notifications_log : "household_id"
+  organizations ||--o{ notifications_log : "organization_id"
   allergy_overrides ||--o{ order_items : "allergy_override_id"
   children ||--o{ order_items : "child_id"
   classrooms ||--o{ order_items : "classroom_id"
+  invoices ||--o{ order_items : "invoice_id"
   menu_items ||--o{ order_items : "menu_item_id"
   orders ||--o{ order_items : "order_id"
   orders ||--o{ order_payments : "order_id"
@@ -686,8 +765,11 @@ erDiagram
   households ||--o{ orders : "household_id"
   menu_weeks ||--o{ orders : "menu_week_id"
   organizations ||--o{ orders : "organization_id"
+  standing_orders ||--o{ orders : "standing_order_id"
   plans ||--o{ plan_price_history : "plan_id"
   households ||--o{ saved_orders : "household_id"
+  organizations ||--o{ school_closures : "organization_id"
+  standing_orders ||--o{ standing_order_adjustments : "standing_order_id"
   classrooms ||--o{ standing_orders : "classroom_id"
   organizations ||--o{ standing_orders : "organization_id"
   menu_weeks ||--o{ subscription_allowances : "menu_week_id"

@@ -72,7 +72,9 @@ update public.organizations
   set status = 'approved', reviewed_at = now(), reviewed_by = 'a0000000-0000-4000-8000-000000000001',
       billing_email = 'accounts@maplegrove.test', billing_terms_days = 30, tax_exempt = true,
       address = '{"line1":"1200 Maple Grove Ave","city":"Pasadena","state":"CA","zip":"91101"}',
-      dropoff_instructions = 'Front office, by 11:15am. Ask for the cafeteria cart.', contact_phone = '(626) 555-0142'
+      dropoff_instructions = 'Front office, by 11:15am. Ask for the cafeteria cart.', contact_phone = '(626) 555-0142',
+      dropoff_entrance = 'Front office, Maple Grove Ave', dropoff_contact = 'Mrs. Lopez (office), ext. 12',
+      dropoff_window = '10:45 to 11:15am', onboarded_at = now()
   where name = 'Maple Grove Elementary';
 
 insert into public.classrooms (id, organization_id, name, teacher_name, grade, headcount, dropoff_location)
