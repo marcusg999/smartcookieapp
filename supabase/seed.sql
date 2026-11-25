@@ -963,17 +963,8 @@ insert into public.testimonials (quote, attribution, is_published, sort_order) v
   ('Ordering takes me two minutes now, and my picky eater actually finishes lunch.', 'Priya, mom of two', true, 1),
   ('The allergy labels give our teachers real peace of mind.', 'Front office, partner school', true, 2);
 
-insert into public.email_templates (key, subject, preheader, body_rich) values
-  ('order_confirmation', 'Your Smart Cookie order {{order_number}} is confirmed', 'Here''s what''s coming this week.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi {{first_name}}, thanks for your order! We''ll deliver on {{delivery_dates}}."}]}]}'),
-  ('order_cutoff_reminder', 'Order by {{cutoff}} for next week', 'Next week''s menu is ready.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Next week''s menu is live. Order by {{cutoff}} so we can cook for you."}]}]}'),
-  ('subscription_autofill', 'We picked your meals for the week of {{week_of}}', 'Your plan''s meals are chosen. Allergies checked.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, so we chose your included meals from your favourites (then chef''s choice), skipping anything that clashes with your kids'' allergies. Order {{order_number}}:"}]},{"type":"paragraph","content":[{"type":"text","text":"{{meals}}"}]}]}'),
-  ('payment_failed', 'Your Smart Cookie plan payment didn''t go through', 'Update your card to keep meals included.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi {{first_name}}, we couldn''t take your latest plan payment. We''ll try again automatically, but the quickest fix is to update your card here: {{update_card_url}}"}]}]}'),
-  ('subscription_autofill_failed', 'We couldn''t pick meals for the week of {{week_of}}', 'Please get in touch.',
-   '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The cutoff passed, but we couldn''t safely choose meals for your plan this week (no delivery address, or no meal that fits everyone''s allergies). Reply to this email and we''ll sort it out."}]}]}');
+-- Email templates are seeded by the migrations (20261128000100_email.sql), so
+-- every environment has them.
 
 update public.site_settings set contact_email = 'hello@smartcookie.test', contact_phone = '(626) 555-0100',
   social_links = '{"instagram":"https://instagram.com/smartcookie"}';
