@@ -1,0 +1,23 @@
+# Secret scanning (Phase 10). Extends gitleaks' default rules; the allow-list
+# covers only well-known, public local-development values and CI dummies.
+title = "Smart Cookie gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public local Supabase demo keys and CI placeholder values"
+regexes = [
+  # Supabase CLI local stack: the published demo JWTs (issuer "supabase-demo").
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZS1kZW1v[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]+''',
+  # Supabase CLI local stack: the published default API keys.
+  '''sb_(publishable|secret)_(ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH|N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz)''',
+  '''super-secret-jwt-token-with-at-least-32-characters-long''',
+  # Placeholders used by .env.example and CI.
+  '''(sk|pk|rk)_test_(ci_)?dummy''',
+  '''whsec_(ci_)?dummy''',
+  '''re_(ci_)?dummy''',
+  '''1x0{20,}AA''',
+  '''e2e-only-cron-secret-not-used-in-production-000''',
+  '''JBSWY3DPEHPK3PXP''',
+]
