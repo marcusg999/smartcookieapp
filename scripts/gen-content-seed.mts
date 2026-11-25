@@ -1,5 +1,6 @@
-// Regenerates the content_blocks seed block in supabase/seed.sql from the
-// registry defaults, so every editable key ships with launch copy.
+// Regenerates the content_blocks block in supabase/bootstrap.sql from the
+// registry defaults, so every editable key ships with launch copy. Re-running
+// bootstrap.sql only adds new keys; it never overwrites the owner's edits.
 //   node scripts/gen-content-seed.mts
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -15,12 +16,13 @@ const rows = CONTENT_GROUPS.flatMap((g) => g.items).map((d) => {
 });
 const block = `${START}
 insert into public.content_blocks (key, type, description, draft_value, published_value, published_at) values
-${rows.join(",\n")};
+${rows.join(",\n")}
+on conflict (key) do nothing;
 ${END}`;
 
-const path = new URL("../supabase/seed.sql", import.meta.url);
+const path = new URL("../supabase/bootstrap.sql", import.meta.url);
 const sql = readFileSync(path, "utf8");
 const re = new RegExp(`${START.replace(/[()]/g, "\\$&")}[\\s\\S]*?${END}`);
-if (!re.test(sql)) throw new Error("seed.sql is missing the generated content_blocks markers");
+if (!re.test(sql)) throw new Error("bootstrap.sql is missing the generated content_blocks markers");
 writeFileSync(path, sql.replace(re, block));
 console.log(`content_blocks seed: ${rows.length} keys`);

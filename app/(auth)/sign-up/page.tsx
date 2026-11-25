@@ -20,6 +20,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/sign-up">
         <SignUpForm
           pilotMode={Boolean(settings?.pilot_mode)}
           initialType={sp.type === "school" ? "school" : "parent"}
+          initialCode={typeof sp.code === "string" && /^[A-Za-z0-9-]{6,40}$/.test(sp.code) ? sp.code.toUpperCase() : ""}
         />
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}

@@ -9,6 +9,8 @@ import { formatDay, formatInZone, isPast, todayInZone } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
 import { CustomerTools } from "./customer-tools";
+import { HouseholdPilotToggle } from "../../pilot/pilot-tools";
+
 import { LateOrderTool } from "./late-order";
 
 export const metadata = { title: "Customer" };
@@ -31,7 +33,7 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
   const { data: h } = await supabase
     .from("households")
     .select(
-      "id, name, created_at, stripe_customer_id, household_members(role, user_id), addresses!addresses_household_id_fkey(id, line1, line2, city, zip, delivery_notes, is_default), children(id, first_name, last_initial, grade, dietary_preferences, notes, archived_at, child_allergens(severity, allergens(name)))",
+      "id, name, created_at, stripe_customer_id, is_pilot, household_members(role, user_id), addresses!addresses_household_id_fkey(id, line1, line2, city, zip, delivery_notes, is_default), children(id, first_name, last_initial, grade, dietary_preferences, notes, archived_at, child_allergens(severity, allergens(name)))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -220,6 +222,23 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
       </section>
       <CustomerTools householdId={h.id} notes={notes ?? []} credits={credits ?? []} />
       {user.roles.includes("owner") ? <LateOrders householdId={h.id} /> : null}
+      {user.roles.includes("owner") ? (
+        <section className={card} aria-labelledby="pilot-h">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="pilot-h" className="text-xl font-bold">
+                Pilot
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {h.is_pilot
+                  ? "This family is in the pilot: they see the feedback button and count in the pilot numbers."
+                  : "Add this family to the pilot to get their feedback and count them in the pilot numbers."}
+              </p>
+            </div>
+            <HouseholdPilotToggle householdId={h.id} pilot={Boolean(h.is_pilot)} />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

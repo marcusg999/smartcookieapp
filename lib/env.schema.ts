@@ -38,6 +38,9 @@ export const serverOnlySchema = z.object({
   CRON_SECRET: z.string().min(32).optional(),
   // Optional: shorten the 5-minute step-up window (tests only; can never exceed 300).
   STEP_UP_MAX_AGE_SECONDS: z.coerce.number().int().min(1).max(300).optional(),
+  // Optional, staging only: raise the 5/minute sign-in limit so the regression
+  // suite (every test from one CI runner IP) can run. Refused in production.
+  AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(5).max(1000).optional(),
   // Build-time only, optional: lets the Sentry build plugin upload source maps.
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
@@ -78,6 +81,13 @@ export const envSchema = publicSchema.extend(serverOnlySchema.shape).superRefine
         code: "custom",
         path: ["MAILPIT_URL"],
         message: "is for local development; unset it in production",
+      });
+    }
+    if (env.AUTH_RATE_LIMIT_PER_MINUTE !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AUTH_RATE_LIMIT_PER_MINUTE"],
+        message: "is for staging test runs only; unset it in production",
       });
     }
     if (env.STEP_UP_MAX_AGE_SECONDS !== undefined) {

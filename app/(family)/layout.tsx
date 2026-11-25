@@ -5,12 +5,16 @@ import { HalftoneDefs } from "@/components/art/cartoons";
 import { Toaster } from "@/components/admin/toaster";
 import { Logo } from "@/components/layout/logo";
 import { NavLink } from "@/components/layout/nav-link";
+import { FeedbackWidget } from "@/components/family/feedback-widget";
 import { getContent } from "@/lib/content/content";
+import { createClient } from "@/lib/supabase/server";
 
 // Family shell. Mobile-first: a bottom tab bar on phones (where most parents
 // order) and a top nav on larger screens. Tab labels come from the CMS.
 export default async function FamilyLayout({ children }: LayoutProps<"/">) {
-  const c = await getContent();
+  const [c, supabase] = await Promise.all([getContent(), createClient()]);
+  // Pilot families get the feedback button (Phase 10). False when signed out.
+  const { data: isPilot } = await supabase.rpc("is_pilot_user");
   const tabs = [
     { href: "/order", label: c.text("nav.tab_menu"), icon: CalendarDays },
     { href: "/orders", label: c.text("nav.tab_orders"), icon: ClipboardList },
@@ -39,6 +43,7 @@ export default async function FamilyLayout({ children }: LayoutProps<"/">) {
           </nav>
         </div>
       </header>
+      {isPilot ? <FeedbackWidget copy={c.group("feedback.")} /> : null}
       <ViewTransition enter="page-in" exit="page-out" default="none">
         <main id="main" className="flex-1 px-4 pt-8 pb-28 md:pb-14">
           {children}

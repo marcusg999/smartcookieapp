@@ -76,6 +76,7 @@ erDiagram
     text key
     text kind
     timestamptz attempted_at
+    bigint id PK
   }
   carts {
     uuid household_id PK
@@ -152,6 +153,16 @@ erDiagram
     uuid author_id FK
     timestamptz created_at
   }
+  deep_link_tokens {
+    uuid id PK
+    text token_hash
+    uuid user_id FK
+    text purpose
+    uuid menu_week_id FK
+    timestamptz expires_at
+    timestamptz used_at
+    timestamptz created_at
+  }
   deliveries {
     uuid order_id PK
     date delivery_date PK
@@ -199,6 +210,13 @@ erDiagram
     boolean is_active
     timestamptz created_at
   }
+  email_preferences {
+    uuid user_id PK
+    boolean menu_published
+    boolean cutoff_reminders
+    uuid unsubscribe_token
+    timestamptz updated_at
+  }
   email_templates {
     uuid id PK
     text key
@@ -207,6 +225,7 @@ erDiagram
     jsonb body_rich
     boolean is_active
     timestamptz updated_at
+    text cta_label
   }
   faqs {
     uuid id PK
@@ -224,6 +243,29 @@ erDiagram
     uuid child_id FK
     uuid menu_item_id FK
     timestamptz created_at
+  }
+  feedback {
+    uuid id PK
+    uuid user_id FK
+    uuid household_id FK
+    text kind
+    smallint rating
+    text comment
+    text page_path
+    uuid menu_week_id FK
+    timestamptz created_at
+    timestamptz resolved_at
+    uuid resolved_by FK
+  }
+  funnel_events {
+    bigint id PK
+    uuid household_id FK
+    uuid menu_week_id FK
+    uuid order_id FK
+    text event
+    boolean is_repeat
+    integer duration_seconds
+    timestamptz occurred_at
   }
   household_members {
     uuid household_id PK
@@ -243,6 +285,8 @@ erDiagram
     timestamptz onboarded_at
     enum ordering_preference
     uuid preferred_plan_id FK
+    timestamptz closed_at
+    boolean is_pilot
   }
   invoice_lines {
     uuid id PK
@@ -283,6 +327,13 @@ erDiagram
     timestamptz reminder_7_at
     text last_error
     uuid created_by FK
+    timestamptz reminder_due_soon_at
+  }
+  known_devices {
+    uuid user_id PK
+    text device_hash PK
+    timestamptz first_seen
+    timestamptz last_seen
   }
   late_order_exceptions {
     uuid id PK
@@ -415,6 +466,12 @@ erDiagram
     uuid household_id FK
     jsonb payload
     uuid organization_id FK
+    text dedupe_key
+    text recipient_hash
+    smallint attempts
+    timestamptz next_attempt_at
+    uuid user_id FK
+    timestamptz created_at
   }
   order_items {
     uuid id PK
@@ -550,6 +607,8 @@ erDiagram
     uuid used_by FK
     timestamptz used_at
     timestamptz created_at
+    timestamptz invited_at
+    text note
   }
   plan_price_history {
     uuid id PK
@@ -645,6 +704,9 @@ erDiagram
     smallint school_invoice_day
     smallint school_overdue_suspend_days
     jsonb kitchen_settings
+    jsonb email_settings
+    smallint data_retention_months
+    jsonb pilot_targets
   }
   standing_order_adjustments {
     uuid id PK
@@ -718,6 +780,8 @@ erDiagram
     uuid pending_plan_id FK
     timestamptz stripe_event_at
     timestamptz payment_failed_at
+    timestamptz renewal_consent_at
+    text renewal_terms
   }
   testimonials {
     uuid id PK
@@ -764,10 +828,16 @@ erDiagram
   content_blocks ||--o{ content_versions : "block_id"
   households ||--o{ customer_notes : "household_id"
   organizations ||--o{ customer_notes : "organization_id"
+  menu_weeks ||--o{ deep_link_tokens : "menu_week_id"
   orders ||--o{ deliveries : "order_id"
   children ||--o{ favorites : "child_id"
   households ||--o{ favorites : "household_id"
   menu_items ||--o{ favorites : "menu_item_id"
+  households ||--o{ feedback : "household_id"
+  menu_weeks ||--o{ feedback : "menu_week_id"
+  households ||--o{ funnel_events : "household_id"
+  menu_weeks ||--o{ funnel_events : "menu_week_id"
+  orders ||--o{ funnel_events : "order_id"
   households ||--o{ household_members : "household_id"
   addresses ||--o{ households : "default_address_id"
   delivery_zones ||--o{ households : "default_zone_id"

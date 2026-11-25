@@ -61,6 +61,10 @@ describe("env schema", () => {
     MAILPIT_URL: undefined,
   };
 
+  it("refuses the staging sign-in limit override in production", () => {
+    expect(envSchema.safeParse({ ...production, AUTH_RATE_LIMIT_PER_MINUTE: "200" }).success).toBe(false);
+  });
+
   it("refuses the local Mailpit transport in production", () => {
     expect(envSchema.safeParse({ ...production, MAILPIT_URL: "http://127.0.0.1:54324" }).success).toBe(false);
   });

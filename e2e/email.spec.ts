@@ -1,5 +1,5 @@
 import { expect, newContext, signInWithPassword, test } from "./support/fixtures";
-import { drainEmailQueue } from "./support/cron";
+import { drainEmailQueueFully as drainEmailQueue } from "./support/cron";
 import { admin, createUser, uniqueEmail } from "./support/supabase";
 
 // Phase 9: emails go through the queue → worker → Mailpit (local stand-in
@@ -31,7 +31,7 @@ async function family(onboarded = true) {
   return { email, userId, householdId };
 }
 
-test("order confirmation: sent once with order details, even when queued twice", async () => {
+test("order confirmation: sent once with order details, even when queued twice @local-only", async () => {
   const f = await family();
   const { data: order } = await admin
     .from("orders")
@@ -76,7 +76,7 @@ test("order confirmation: sent once with order details, even when queued twice",
   expect(row!.recipient_hash).toMatch(/^[0-9a-f]{64}$/);
 });
 
-test("marketing email: one-click unsubscribe header, opt-out respected, unsubscribe page works signed out", async ({
+test("marketing email: one-click unsubscribe header, opt-out respected, unsubscribe page works signed out @local-only", async ({
   page,
   browser,
 }) => {

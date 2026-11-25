@@ -18,9 +18,11 @@ import { Turnstile } from "./turnstile";
 export function SignUpForm({
   pilotMode = false,
   initialType = "parent",
+  initialCode = "",
 }: {
   pilotMode?: boolean;
   initialType?: "parent" | "school";
+  initialCode?: string;
 }) {
   const [accountType, setAccountType] = useState<"parent" | "school">(initialType);
   const [organizationName, setOrganizationName] = useState("");
@@ -103,6 +105,7 @@ export function SignUpForm({
             <Input
               id="pilotCode"
               name="pilotCode"
+              defaultValue={initialCode}
               autoComplete="off"
               autoCapitalize="characters"
               maxLength={40}

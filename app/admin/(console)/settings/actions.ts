@@ -65,6 +65,8 @@ const schema = z.object({
     postal_address: z.string().trim().max(200),
     reply_to: z.union([z.literal(""), z.email()]),
   }),
+  // Phase 10: how long a closed account's children, allergies and addresses are kept.
+  data_retention_months: z.number().int().min(1).max(120),
   logo_path: z.string().max(300).nullable(),
 });
 

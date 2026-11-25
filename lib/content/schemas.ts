@@ -3,12 +3,13 @@ import { z } from "zod";
 import { richTextSchema } from "@/lib/validation/rich-text";
 
 import type { ContentType } from "./registry";
+import { safeHref } from "@/lib/validation/rich-text";
 
 const href = z
   .string()
   .trim()
   .max(300)
-  .refine((v) => /^(https?:\/\/|mailto:|\/(?!\/))/.test(v), "Links must start with /, https:// or mailto:");
+  .refine((v) => safeHref(v) === v.trim(), "Links must start with /, https:// or mailto:");
 
 export const ctaSchema = z.object({ label: z.string().trim().min(1, "Button text can't be empty.").max(60), href });
 export const stepsSchema = z

@@ -73,14 +73,18 @@ export function usesPlaceholderRedis(url: string): boolean {
   }
 }
 
+/** The configured limit (staging may raise the sign-in limit for test runs; never production). */
+function tokensFor(name: LimiterName): number {
+  if (name === "auth" && env.AUTH_RATE_LIMIT_PER_MINUTE && env.NEXT_PUBLIC_APP_ENV !== "production")
+    return env.AUTH_RATE_LIMIT_PER_MINUTE;
+  return LIMITS[name].tokens;
+}
+
 function getLimiters(): Record<LimiterName, Limiter> {
   if (limiters) return limiters;
   if (usesPlaceholderRedis(env.UPSTASH_REDIS_REST_URL) && env.NEXT_PUBLIC_APP_ENV !== "production") {
     limiters = Object.fromEntries(
-      (Object.keys(LIMITS) as LimiterName[]).map((name) => [
-        name,
-        memoryLimiter(LIMITS[name].tokens, LIMITS[name].window),
-      ]),
+      (Object.keys(LIMITS) as LimiterName[]).map((name) => [name, memoryLimiter(tokensFor(name), LIMITS[name].window)]),
     ) as Record<LimiterName, Limiter>;
     return limiters;
   }
@@ -88,7 +92,7 @@ function getLimiters(): Record<LimiterName, Limiter> {
   const make = (name: LimiterName) =>
     new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(LIMITS[name].tokens, LIMITS[name].window),
+      limiter: Ratelimit.slidingWindow(tokensFor(name), LIMITS[name].window),
       prefix: `smartcookie:rl:${name}`,
       analytics: false,
       enableTelemetry: false,

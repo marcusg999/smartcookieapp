@@ -28,6 +28,9 @@ export default defineConfig({
       : {}),
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
+  // Against staging (E2E_TARGET=staging) skip tests that read email from the
+  // local Mailpit or depend on local-only settings.
+  grepInvert: process.env.E2E_TARGET === "staging" ? /@local-only/ : undefined,
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     // Auth flows are browser-agnostic and stateful; run them once.
