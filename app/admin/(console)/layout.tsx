@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MapPin,
   Percent,
+  Rocket,
   School,
   Settings,
   ShieldCheck,
@@ -86,6 +87,7 @@ const NAV: NavGroup[] = [
   },
   {
     items: [
+      { href: "/admin/pilot", label: "Pilot", icon: Rocket, roles: OWNER },
       { href: "/admin/discounts", label: "Discounts", icon: Percent, roles: OWNER },
       { href: "/admin/staff", label: "Staff", icon: ShieldCheck, roles: OWNER },
       { href: "/admin/settings", label: "Settings", icon: Settings, roles: OWNER },

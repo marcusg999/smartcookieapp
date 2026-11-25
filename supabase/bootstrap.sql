@@ -733,7 +733,21 @@ insert into public.content_blocks (key, type, description, draft_value, publishe
   ('unsub.all', 'text', 'Button: all', '"Unsubscribe from all optional emails"', '"Unsubscribe from all optional emails"', now()),
   ('unsub.done', 'text', 'Done message', '"Done. You won''t get these emails any more. Order and account emails will still arrive."', '"Done. You won''t get these emails any more. Order and account emails will still arrive."', now()),
   ('unsub.invalid', 'text', 'Invalid link', '"This link isn''t valid any more. You can change your emails in your account."', '"This link isn''t valid any more. You can change your emails in your account."', now()),
-  ('unsub.manage', 'text', 'Link to preferences', '"Manage all email preferences"', '"Manage all email preferences"', now())
+  ('unsub.manage', 'text', 'Link to preferences', '"Manage all email preferences"', '"Manage all email preferences"', now()),
+  ('feedback.button', 'text', 'Button', '"Feedback"', '"Feedback"', now()),
+  ('feedback.title', 'text', 'Dialog heading', '"Help us get this right"', '"Help us get this right"', now()),
+  ('feedback.intro', 'text', 'Dialog intro', '"You''re one of our founding families. Your feedback goes straight to Hannah."', '"You''re one of our founding families. Your feedback goes straight to Hannah."', now()),
+  ('feedback.weekly_question', 'text', 'Rating question', '"How was ordering this week?"', '"How was ordering this week?"', now()),
+  ('feedback.scale_low', 'text', 'Rating: low end', '"Hard"', '"Hard"', now()),
+  ('feedback.scale_high', 'text', 'Rating: high end', '"Easy"', '"Easy"', now()),
+  ('feedback.pick_rating', 'text', 'Missing rating', '"Pick a number from 1 to 5 first."', '"Pick a number from 1 to 5 first."', now()),
+  ('feedback.comment_label', 'text', 'Comment label', '"Anything to add? (optional)"', '"Anything to add? (optional)"', now()),
+  ('feedback.send_rating', 'text', 'Send rating button', '"Send rating"', '"Send rating"', now()),
+  ('feedback.confusing_label', 'text', 'Confusing label', '"Something confusing?"', '"Something confusing?"', now()),
+  ('feedback.confusing_help', 'text', 'Confusing help', '"We''ll see which page you were on, so you don''t need to explain where."', '"We''ll see which page you were on, so you don''t need to explain where."', now()),
+  ('feedback.send_confusing', 'text', 'Send note button', '"Send"', '"Send"', now()),
+  ('feedback.empty', 'text', 'Empty note', '"Write a few words first."', '"Write a few words first."', now()),
+  ('feedback.thanks', 'text', 'Thanks message', '"Thank you! We read every one."', '"Thank you! We read every one."', now())
 on conflict (key) do nothing;
 -- END content_blocks
 

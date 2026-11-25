@@ -9,6 +9,7 @@ import { freshTotp } from "./support/totp";
 // sees everything). Zero serious or critical violations allowed.
 test.skip(({ isMobile }) => isMobile, "runs once, on desktop");
 
+// Phase 10: every static admin screen, not just the kitchen ones.
 const PAGES = [
   "/admin",
   "/admin/kitchen",
@@ -18,9 +19,32 @@ const PAGES = [
   "/admin/kitchen/packing",
   "/admin/kitchen/manifest",
   "/admin/kitchen/payments",
+  "/admin/orders",
+  "/admin/customers",
+  "/admin/schools",
+  "/admin/menu",
+  "/admin/menu/weeks",
+  "/admin/menu/templates",
+  "/admin/menu/allergens",
+  "/admin/menu/badges",
+  "/admin/menu/categories",
+  "/admin/plans",
+  "/admin/zones",
+  "/admin/discounts",
+  "/admin/pilot",
+  "/admin/content",
+  "/admin/content/pages",
+  "/admin/content/faqs",
+  "/admin/content/testimonials",
+  "/admin/content/emails",
+  "/admin/content/media",
+  "/admin/content/emails/order_confirmation",
+  "/admin/staff",
+  "/admin/settings",
+  "/admin/audit",
 ];
 
-test("kitchen screens have no serious or critical WCAG 2.2 AA violations", async ({ page }) => {
+test("admin screens have no serious or critical WCAG 2.2 AA violations", async ({ page }) => {
   test.slow();
   const email = uniqueEmail("a11y-owner");
   await createUser(email, ["owner"]);

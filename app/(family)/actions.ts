@@ -910,3 +910,35 @@ export async function planStatus(): Promise<ActionResult<{ status: string | null
     return { ok: true, data: { status: (data?.status as string | null) ?? null } };
   });
 }
+
+// ─── Pilot feedback (Phase 10) ───────────────────────────────────────────────
+
+const feedbackSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("weekly"),
+    rating: z.number().int().min(1).max(5),
+    comment: z.string().trim().max(2000),
+    pagePath: z.string().max(300).regex(/^\//),
+  }),
+  z.object({
+    kind: z.literal("confusing"),
+    comment: z.string().trim().min(1, "Tell us what was confusing.").max(2000),
+    pagePath: z.string().max(300).regex(/^\//),
+  }),
+]);
+
+/** Pilot families only; RLS (is_pilot_user) enforces it. */
+export async function sendFeedback(input: z.input<typeof feedbackSchema>): Promise<ActionResult> {
+  return familyAction({ schema: feedbackSchema, input }, async (d, { supabase, householdId }) => {
+    const { error } = await supabase.from("feedback").insert({
+      household_id: householdId,
+      kind: d.kind,
+      rating: d.kind === "weekly" ? d.rating : null,
+      comment: d.comment || null,
+      // The path only (no query string, which could hold ids or tokens).
+      page_path: d.pagePath.split(/[?#]/)[0]!.slice(0, 300),
+    });
+    if (error) return fail("forbidden", "Feedback is open to pilot families only.");
+    return { ok: true };
+  });
+}

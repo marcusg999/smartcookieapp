@@ -243,6 +243,14 @@ export const EMAIL_CATALOG: Record<string, CatalogEntry> = {
     cta: "admin_payments_url",
     when: "Daily, only when something needs attention.",
   },
+  pilot_invite: {
+    label: "Founding-family invitation (pilot)",
+    audience: "family",
+    category: "transactional",
+    variables: ["code", "signup_url"],
+    cta: "signup_url",
+    when: "The owner invites a family to the pilot from Admin → Pilot.",
+  },
   owner_payment_health: {
     label: "Payment problems found (to the owner)",
     audience: "owner",
@@ -330,6 +338,8 @@ export const SAMPLE_VARIABLES: Record<string, string> = {
   past_due_plans: "1",
   overdue_invoices: "1",
   overdue_amount: "$1,240.00",
+  code: "SC-7KQ4-M2XD",
+  signup_url: "https://smartcookie.example/sign-up?code=SC-7KQ4-M2XD",
   stuck_orders: "SC-2026-001042",
   stripe_mismatches: "none",
   failed_webhooks: "0",

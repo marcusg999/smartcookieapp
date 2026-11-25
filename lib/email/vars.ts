@@ -174,6 +174,8 @@ export async function buildVariables(
     v.school_name ||= (org?.name as string | undefined) ?? "";
     v.admin_url = url(`/admin/schools/${n.organization_id}`);
   }
+  if (typeof p.code === "string" && /^[A-Z0-9-]{6,40}$/.test(p.code))
+    v.signup_url = url(`/sign-up?code=${encodeURIComponent(p.code)}`);
   if (typeof p.role === "string") v.role = copy[`email.role.${p.role}`] || p.role;
   return v;
 }
