@@ -24,7 +24,8 @@ export function safeHref(href: unknown): string | null {
   if (typeof href !== "string" || href.length > 500) return null;
   const value = href.trim();
   if (/^(https?:\/\/|mailto:)/i.test(value)) return value;
-  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  // Same-site paths only: "//host" and "/\\host" are protocol-relative in browsers.
+  if (value.startsWith("/") && !/^\/[/\\]/.test(value) && !/[\u0000-\u001f]/.test(value)) return value;
   return null;
 }
 

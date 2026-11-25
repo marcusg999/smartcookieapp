@@ -9,6 +9,7 @@ import { brandCss, getPublicSettings, type PublicSettings } from "@/lib/content/
 import { publicEnv } from "@/lib/env.public";
 
 import "./globals.css";
+import { safeHref } from "@/lib/validation/rich-text";
 
 // Self-hosted variable fonts (OFL, see app/fonts). Served from 'self', so the
 // CSP's font-src stays strict.
@@ -74,7 +75,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [settings, nonce] = await Promise.all([safeSettings(), headers().then((h) => h.get("x-nonce") ?? undefined)]);
   const css = settings ? brandCss(settings.brand_colors ?? {}) : "";
   const announcement = settings?.announcement?.enabled && settings.announcement.text ? settings.announcement : null;
-  const link = announcement?.link && /^(https:\/\/|\/(?!\/))/.test(announcement.link) ? announcement.link : null;
+  const link = announcement?.link && !/^(http:|mailto:)/i.test(announcement.link) ? safeHref(announcement.link) : null;
 
   return (
     <html lang="en" className={`h-full ${bodoni.variable} ${sourceSans.variable}`}>

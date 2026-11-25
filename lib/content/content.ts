@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { RichNode } from "@/lib/validation/rich-text";
 
 import { CONTENT_GROUPS } from "./registry";
+import { safeHref } from "@/lib/validation/rich-text";
 
 /** Cache tags. Admin actions call updateTag(tag) after a successful write. */
 export const TAGS = { content: "content", settings: "settings", menu: "menu", pages: "pages", faqs: "faqs" } as const;
@@ -84,7 +85,7 @@ export class Content {
     return {
       label: typeof value?.label === "string" ? value.label : "",
       // Re-checked at render: only site-relative, http(s) or mailto links.
-      href: typeof value?.href === "string" && /^(https?:\/\/|mailto:|\/(?!\/))/.test(value.href) ? value.href : "/",
+      href: safeHref(value?.href) ?? "/",
     };
   }
 
