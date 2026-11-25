@@ -59,7 +59,11 @@ export function EmailEditor({
           />
         </Field>
         {hasButton ? (
-          <Field id="em-cta" label="Button text" help="The button links to the right page automatically. Leave empty for no button.">
+          <Field
+            id="em-cta"
+            label="Button text"
+            help="The button links to the right page automatically. Leave empty for no button."
+          >
             <Input
               id="em-cta"
               value={t.cta_label}

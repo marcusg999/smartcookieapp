@@ -72,11 +72,24 @@ export function EmailLayout({
         >
           <Section style={{ borderBottom: `4px solid ${colors.primary}`, paddingBottom: 12, marginBottom: 20 }}>
             {logoUrl ? (
-              <Img src={logoUrl} width="48" height="48" alt="" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }} />
+              <Img
+                src={logoUrl}
+                width="48"
+                height="48"
+                alt=""
+                style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}
+              />
             ) : null}
             <Heading
               as="h1"
-              style={{ display: "inline-block", verticalAlign: "middle", margin: 0, fontSize: 24, fontStyle: "italic", fontFamily: "Georgia, serif" }}
+              style={{
+                display: "inline-block",
+                verticalAlign: "middle",
+                margin: 0,
+                fontSize: 24,
+                fontStyle: "italic",
+                fontFamily: "Georgia, serif",
+              }}
             >
               {businessName}
             </Heading>
@@ -100,7 +113,10 @@ export function EmailLayout({
               >
                 {cta.label}
               </Button>
-              <Text className="sc-muted" style={{ fontSize: 12, color: "#5a4a48", margin: "10px 0 0", wordBreak: "break-all" }}>
+              <Text
+                className="sc-muted"
+                style={{ fontSize: 12, color: "#5a4a48", margin: "10px 0 0", wordBreak: "break-all" }}
+              >
                 {cta.url}
               </Text>
             </Section>

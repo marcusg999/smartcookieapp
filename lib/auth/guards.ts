@@ -160,7 +160,11 @@ async function noteOwnerDevice(userId: string) {
     const hash = createHash("sha256").update(`${userId}:${label}`).digest("hex");
     // Service role: known_devices has no user policies; record_sign_in_device
     // is granted to the service role only and queues the alert.
-    await createAdminClient().rpc("record_sign_in_device", { p_user: userId, p_device_hash: hash, p_device_label: label });
+    await createAdminClient().rpc("record_sign_in_device", {
+      p_user: userId,
+      p_device_hash: hash,
+      p_device_label: label,
+    });
   } catch (error) {
     console.error("recording the sign-in device failed", { message: (error as Error).message });
   }

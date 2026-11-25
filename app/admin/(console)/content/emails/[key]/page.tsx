@@ -94,7 +94,9 @@ export default async function EmailPage({ params }: PageProps<"/admin/content/em
                   <tr key={r.id} className="border-b border-ink/20">
                     <td className="py-2 pr-3 whitespace-nowrap">{formatInZone(r.created_at as string, tz)}</td>
                     <td className="py-2 pr-3 capitalize">{r.status}</td>
-                    <td className="py-2 pr-3 font-mono text-xs">{(r.recipient_hash as string | null)?.slice(0, 12) ?? "—"}</td>
+                    <td className="py-2 pr-3 font-mono text-xs">
+                      {(r.recipient_hash as string | null)?.slice(0, 12) ?? "—"}
+                    </td>
                     <td className="py-2 text-xs">{r.error ?? (r.attempts ? `${r.attempts} attempt(s)` : "")}</td>
                   </tr>
                 ))}
