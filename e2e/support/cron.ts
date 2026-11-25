@@ -12,3 +12,14 @@ export async function drainEmailQueue(): Promise<{ processed: number; sent: numb
   if (!res.ok) throw new Error(`email worker answered ${res.status}`);
   return res.json();
 }
+
+/**
+ * Run the worker until the queue is empty (e2e has no cron, so earlier tests
+ * leave a backlog and a test's own email is the newest in the queue).
+ */
+export async function drainEmailQueueFully(maxRounds = 30) {
+  for (let i = 0; i < maxRounds; i++) {
+    const { processed } = await drainEmailQueue();
+    if (processed === 0) return;
+  }
+}

@@ -41,20 +41,27 @@ export async function processEmailQueue(admin: Admin, limit = 50) {
   for (const r of copyRows ?? []) if (typeof r.published_value === "string") copy[r.key as string] = r.published_value;
 
   const tally = { processed: 0, sent: 0, skipped: 0, failed: 0 };
-  for (const row of due) {
-    const { data: claimed } = await admin
-      .from("notifications_log")
-      .update({ status: "sending" })
-      .eq("id", row.id)
-      .eq("status", "queued")
-      .select("id")
-      .maybeSingle();
-    if (!claimed) continue;
-    tally.processed++;
-    const n = row as QueuedEmail & { attempts: number };
-    const outcome = await handleOne(admin, n, copy, timezone);
-    tally[outcome]++;
-  }
+  // A few at a time: rendering is CPU work and sends wait on the network.
+  // Each row is still claimed on its own first, so nothing is sent twice.
+  const CONCURRENCY = 4;
+  let next = 0;
+  const lane = async () => {
+    while (next < due.length) {
+      const row = due[next++]!;
+      const { data: claimed } = await admin
+        .from("notifications_log")
+        .update({ status: "sending" })
+        .eq("id", row.id)
+        .eq("status", "queued")
+        .select("id")
+        .maybeSingle();
+      if (!claimed) continue;
+      tally.processed++;
+      const outcome = await handleOne(admin, row as QueuedEmail & { attempts: number }, copy, timezone);
+      tally[outcome]++;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, due.length) }, lane));
   return tally;
 }
 

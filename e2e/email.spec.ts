@@ -1,5 +1,5 @@
 import { expect, newContext, signInWithPassword, test } from "./support/fixtures";
-import { drainEmailQueue } from "./support/cron";
+import { drainEmailQueueFully as drainEmailQueue } from "./support/cron";
 import { admin, createUser, uniqueEmail } from "./support/supabase";
 
 // Phase 9: emails go through the queue → worker → Mailpit (local stand-in

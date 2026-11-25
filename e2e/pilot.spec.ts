@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { drainEmailQueue } from "./support/cron";
+import { drainEmailQueueFully as drainEmailQueue } from "./support/cron";
 import { expect, newContext, signInWithPassword, test } from "./support/fixtures";
 import { admin, createUser, enrollTotp, uniqueEmail } from "./support/supabase";
 import { freshTotp } from "./support/totp";
