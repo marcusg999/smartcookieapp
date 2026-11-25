@@ -23,6 +23,7 @@
     "owner:bootstrap": "node --env-file-if-exists=.env.local scripts/owner-bootstrap.mts",
     "db:erd": "bash scripts/generate-erd.sh",
     "content:seed": "node scripts/gen-content-seed.mts",
+    "db:bootstrap": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -1 -f supabase/bootstrap.sql",
     "stripe:forward": "NODE_USE_ENV_PROXY=1 node --env-file-if-exists=.env.local scripts/stripe-forward.mts"
   },
   "dependencies": {

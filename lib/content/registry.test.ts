@@ -18,7 +18,7 @@ describe("content registry", () => {
   });
 
   it("every key is seeded (run `pnpm content:seed` after adding one)", () => {
-    const seed = readFileSync("supabase/seed.sql", "utf8");
+    const seed = readFileSync("supabase/bootstrap.sql", "utf8");
     const missing = CONTENT_KEYS.filter((k) => !seed.includes(`('${k}', `));
     expect(missing).toEqual([]);
   });

@@ -1,7 +1,7 @@
 /**
  * Every editable piece of customer-facing copy, grouped the way the owner
  * thinks about the site (Phase 4 §6). The VALUES live in `content_blocks`
- * (seeded in supabase/seed.sql, edited in /admin/content); this registry only
+ * (seeded in supabase/bootstrap.sql, edited in /admin/content); this registry only
  * describes each key so the admin can group and label them.
  */
 import { EMAIL_CONTENT_GROUPS } from "./email-registry.ts";
