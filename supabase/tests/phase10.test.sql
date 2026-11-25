@@ -3,7 +3,7 @@
 -- every table has RLS; every foreign key has a covering index.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(23);
 
 create function pg_temp.act_as_anon() returns void language plpgsql as $$
 begin
@@ -72,6 +72,34 @@ select pg_temp.act_as_user();
 select throws_ok($$ update public.content_blocks_public set value = '"PWNED"' where key = 'p10.test' $$, null, null,
   'a signed-in parent cannot rewrite copy through the view (not updatable, and no write grant)');
 select is((select count(*)::int from public.kitchen_order_lines), 0, 'a parent sees nothing in the kitchen view');
+select pg_temp.reset_role();
+
+-- ── SR-04: closing and purging a household after account deletion ──────────
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data,
+                        raw_user_meta_data, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-0000000000b1', 'authenticated', 'authenticated',
+          'p10-close@test.local', '', now(), '{}', '{}', now(), now());
+create temp table p10 as
+  select household_id from public.household_members where user_id = '10000000-0000-4000-8000-0000000000b1';
+insert into public.children (household_id, first_name) select household_id, 'Closey' from p10;
+insert into public.child_allergens (child_id, allergen_id)
+  select c.id, (select id from public.allergens order by sort_order limit 1) from public.children c where c.first_name = 'Closey';
+insert into public.addresses (household_id, line1, city, zip) select household_id, '1 Gone St', 'Pasadena', '91105' from p10;
+
+delete from auth.users where id = '10000000-0000-4000-8000-0000000000b1';
+select ok((select closed_at is not null from public.households where id = (select household_id from p10)),
+  'deleting the last member closes the household');
+select ok((select archived_at is not null from public.children where first_name = 'Closey'),
+  'its children are archived at once');
+select is(public.purge_closed_households(), 0, 'nothing is purged inside the retention period');
+select is((select count(*)::int from public.children where first_name = 'Closey'), 1, 'children kept during retention');
+update public.households set closed_at = now() - interval '25 months' where id = (select household_id from p10);
+select ok(public.purge_closed_households() >= 1, 'after the retention period the household is purged');
+select is((select count(*)::int from public.children c join p10 on p10.household_id = c.household_id)
+          + (select count(*)::int from public.addresses a join p10 on p10.household_id = a.household_id), 0,
+  'children (and their allergies) and addresses are deleted');
+select pg_temp.act_as_user();
+select throws_ok($$ select public.purge_closed_households() $$, '42501', null, 'only the service role runs the purge');
 select pg_temp.reset_role();
 
 select * from finish();

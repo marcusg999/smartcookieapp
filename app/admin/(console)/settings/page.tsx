@@ -47,6 +47,7 @@ export default async function SettingsPage() {
       postal_address: String(email.postal_address ?? ""),
       reply_to: String(email.reply_to ?? ""),
     },
+    data_retention_months: s?.data_retention_months ?? 24,
     logo_path: s?.logo_path ?? null,
   };
   return (

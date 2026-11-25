@@ -63,6 +63,17 @@ export async function deleteAccount(_prev: ActionResult | null, formData: FormDa
   }
 
   const supabase = await createClient();
+  // A live plan would keep billing after the account is gone: cancel it first.
+  const { data: liveSub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .in("status", ["active", "trialing", "past_due", "unpaid", "incomplete"])
+    .eq("cancel_at_period_end", false)
+    .limit(1)
+    .maybeSingle();
+  if (liveSub) {
+    return fail("validation", "Please cancel your plan first (Plan page), then delete your account.");
+  }
   await supabase.from("profiles").update({ full_name: null, phone: null }).eq("id", user.id);
   await audit("account.deleted", { entityType: "user", entityId: user.id });
 

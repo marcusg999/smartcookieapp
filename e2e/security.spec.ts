@@ -131,3 +131,47 @@ test("open redirects: next= only goes to same-site paths", async ({ page }) => {
     expect(page.url()).not.toContain("evil.example");
   }
 });
+
+test("CCPA: a parent exports all their data, then deleting the account closes the household", async ({ page }) => {
+  const email = uniqueEmail("ccpa");
+  const userId = await createUser(email);
+  const { data: hm } = await admin.from("household_members").select("household_id").eq("user_id", userId).single();
+  const householdId = hm!.household_id as string;
+  const { data: child } = await admin
+    .from("children")
+    .insert({ household_id: householdId, first_name: "Exporty" })
+    .select("id")
+    .single();
+  const { data: sesame } = await admin.from("allergens").select("id").eq("slug", "sesame").single();
+  await admin.from("child_allergens").insert({ child_id: child!.id, allergen_id: sesame!.id, severity: "severe" });
+
+  await page.goto("/sign-in?next=/account/privacy");
+  await page.getByRole("button", { name: "Use a password instead" }).click();
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/account\/privacy/);
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: /Download my data/ }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^smart-cookie-data-.*\.json$/);
+  const { readFile } = await import("node:fs/promises");
+  const data = JSON.parse(await readFile((await download.path())!, "utf8"));
+  expect(data.account.email).toBe(email);
+  expect(data.children[0].first_name).toBe("Exporty");
+  expect(JSON.stringify(data.children[0].child_allergens)).toContain("Sesame");
+  for (const key of ["households", "addresses", "orders", "subscriptions", "favorites", "saved_orders"])
+    expect(data, key).toHaveProperty(key);
+
+  await page.getByLabel(/Type DELETE/).fill("DELETE");
+  await page.getByRole("button", { name: /Delete my account/ }).click();
+  await expect(page).toHaveURL(/account=deleted/);
+  const { data: hh } = await admin.from("households").select("closed_at").eq("id", householdId).single();
+  expect(hh!.closed_at).not.toBeNull();
+  const { data: archived } = await admin.from("children").select("archived_at").eq("id", child!.id).single();
+  expect(archived!.archived_at).not.toBeNull();
+  const { data: gone } = await admin.auth.admin.getUserById(userId);
+  expect(gone.user).toBeNull();
+});

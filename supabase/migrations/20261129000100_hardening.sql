@@ -192,3 +192,67 @@ insert into public.email_templates (key, subject, preheader, body_rich, cta_labe
    '{"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Today''s payment check found:"}]}, {"type": "paragraph", "content": [{"type": "text", "text": "Orders stuck waiting for payment: {{stuck_orders}}\nPaid in Stripe but not marked paid here: {{stripe_mismatches}}\nStripe events that failed to process: {{failed_webhooks}}"}]}, {"type": "paragraph", "content": [{"type": "text", "text": "Open Payments to check them. If an order was paid in Stripe but isn''t marked paid, contact your developer before refunding."}]}]}',
    'Open payments')
 on conflict (key) do nothing;
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- SR-04 (privacy): deleting an account removed the login but left the
+-- household's children, allergies and addresses behind with no owner. Now a
+-- household whose last member leaves is closed and its children archived at
+-- once; after the retention period (owner setting, default 24 months) the
+-- children, allergies, addresses, favourites and saved orders are deleted.
+-- Orders stay (financial records) with their own snapshots; child links on
+-- order lines become null.
+-- ═════════════════════════════════════════════════════════════════════════════
+alter table public.households add column closed_at timestamptz;
+alter table public.site_settings
+  add column data_retention_months smallint not null default 24 check (data_retention_months between 1 and 120);
+
+create function public.trg_close_empty_household()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (select 1 from public.household_members where household_id = old.household_id) then
+    update public.households set closed_at = coalesce(closed_at, now()) where id = old.household_id;
+    update public.children set archived_at = coalesce(archived_at, now()) where household_id = old.household_id;
+  end if;
+  return old;
+end;
+$$;
+create trigger household_members_close_empty after delete on public.household_members
+  for each row execute function public.trg_close_empty_household();
+
+create function public.purge_closed_households()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_months integer := coalesce((select data_retention_months from public.site_settings where id), 24);
+  v_ids uuid[];
+begin
+  if not public.is_trusted_writer() then
+    raise exception 'Not allowed' using errcode = 'insufficient_privilege';
+  end if;
+  select coalesce(array_agg(id), '{}') into v_ids from public.households
+    where closed_at is not null and closed_at < now() - make_interval(months => v_months)
+      and not exists (select 1 from public.household_members m where m.household_id = households.id);
+  if cardinality(v_ids) = 0 then
+    return 0;
+  end if;
+  update public.households set default_address_id = null, name = 'Closed household' where id = any (v_ids);
+  delete from public.children where household_id = any (v_ids);   -- cascades allergies, favourites, overrides
+  delete from public.addresses where household_id = any (v_ids);
+  delete from public.saved_orders where household_id = any (v_ids);
+  delete from public.favorites where household_id = any (v_ids);
+  delete from public.carts where household_id = any (v_ids);
+  delete from public.zone_waitlist where household_id = any (v_ids);
+  delete from public.customer_notes where household_id = any (v_ids);
+  return cardinality(v_ids);
+end;
+$$;
+revoke execute on function public.trg_close_empty_household(), public.purge_closed_households() from public, anon, authenticated;
+grant execute on function public.purge_closed_households() to service_role;
+select cron.schedule('purge-closed-households', '20 4 1 * *', $$select public.purge_closed_households()$$);

@@ -463,6 +463,24 @@ export function SettingsForm({ settings }: { settings: SettingsInput }) {
         </div>
       </Section>
 
+      <Section title="Privacy">
+        <Field
+          id="retention-months"
+          label="Keep a closed account's children, allergies and addresses for (months)"
+          help="When a family deletes their account, their children are archived straight away and deleted after this many months. Orders are kept as financial records. Check this with your lawyer."
+        >
+          <Input
+            id="retention-months"
+            type="number"
+            min={1}
+            max={120}
+            value={s.data_retention_months}
+            onChange={(e) => set("data_retention_months", Math.min(120, Math.max(1, Number(e.target.value || 1))))}
+            className="max-w-24"
+          />
+        </Field>
+      </Section>
+
       <UnsavedBar
         dirty={dirty}
         saving={saving}
