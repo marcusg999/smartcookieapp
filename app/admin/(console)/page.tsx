@@ -121,11 +121,17 @@ export default async function AdminThisWeekPage({ searchParams }: PageProps<"/ad
             }
           />
           <Tile label="Families · schools" value={`${summary.families} · ${summary.schools}`} sub="meals" />
-          <Tile
-            label="Paid · invoiced · unpaid"
-            value={`${summary.paid} · ${summary.invoiced} · ${summary.unpaid}`}
-            sub={unpaidHeld ? `${unpaidHeld} unpaid meal line(s) are off the cook list (Settings → Kitchen)` : "meals"}
-          />
+          {isOps ? (
+            <Tile
+              label="Paid · invoiced · unpaid"
+              value={`${summary.paid} · ${summary.invoiced} · ${summary.unpaid}`}
+              sub={
+                unpaidHeld ? `${unpaidHeld} unpaid meal line(s) are off the cook list (Settings → Kitchen)` : "meals"
+              }
+            />
+          ) : (
+            <Tile label="Delivery days" value={summary.byDay.length} sub="with meals this week" />
+          )}
           <Tile
             label="Children with allergies"
             value={summary.childrenWithAllergies}
@@ -210,8 +216,8 @@ function AllergyFlagsLegend() {
       Key:
       <AllergyFlags
         allergens={[
-          { name: "Allergy", severity: "allergy" },
-          { name: "Severe", severity: "severe" },
+          { name: "Peanuts", severity: "allergy" },
+          { name: "Sesame", severity: "severe" },
         ]}
       />
     </div>

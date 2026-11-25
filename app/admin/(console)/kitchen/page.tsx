@@ -58,12 +58,12 @@ export default async function CookListPage({ searchParams }: PageProps<"/admin/k
           <h2 id={`day-${d}`} className="border-b-4 border-ink pb-1 text-3xl font-black">
             {dayLabel(d)}
           </h2>
-          <table className="mt-2 w-full text-left">
+          <table className="mt-2 w-full table-fixed text-left">
             <thead>
               <tr className="border-b-2 border-ink text-sm uppercase">
-                <th className="py-2">Meal</th>
-                <th className="text-right">Total</th>
-                <th className="text-right">Standard</th>
+                <th className="w-[40%] py-2">Meal</th>
+                <th className="w-[14%] text-right">Total</th>
+                <th className="w-[14%] text-right">Standard</th>
                 <th className="pl-6">Allergy-modified</th>
               </tr>
             </thead>
