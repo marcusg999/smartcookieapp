@@ -4,8 +4,18 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { fail, type ActionResult } from "@/lib/auth/action-result";
+import { getContent } from "@/lib/content/content";
+import { getPublicSettings } from "@/lib/content/settings";
 import { check, familyAction } from "@/lib/family/action";
-import { getChildren, getFavorites, getLastOrderLines, getOrderableWeeks, getZoneForZip } from "@/lib/family/queries";
+import { renewalTerms } from "@/lib/family/plan-copy";
+import {
+  getChildren,
+  getFavorites,
+  getLastOrderLines,
+  getOrderableWeeks,
+  getPlans,
+  getZoneForZip,
+} from "@/lib/family/queries";
 import type { PublicWeek } from "@/lib/menu/queries";
 import { blockingAllergens, normalizeLines, planRepeat, type CartLine } from "@/lib/ordering/logic";
 import { getPaymentProvider } from "@/lib/payments/provider";
@@ -702,13 +712,30 @@ export async function choosePlan(
   input: unknown,
 ): Promise<ActionResult<{ kind: "active" | "client_secret"; clientSecret?: string; amountCents?: number }>> {
   return familyAction(
-    { schema: z.object({ planId: uuid }), input, limiter: "checkout" },
+    // California ARL: the parent must tick "renews automatically until I
+    // cancel" next to the disclosure before a plan can start.
+    { schema: z.object({ planId: uuid, renewalConsent: z.literal(true) }), input, limiter: "checkout" },
     async ({ planId }, { supabase, householdId }) => {
+      const [plans, kids, c, settings] = await Promise.all([
+        getPlans(),
+        getChildren(householdId),
+        getContent(),
+        getPublicSettings().catch(() => null),
+      ]);
+      const plan = plans.find((p) => p.id === planId);
+      if (!plan) return fail("validation", "That plan isn't available.");
       const { data: subId, error } = await supabase.rpc("create_pending_subscription", {
         p_household: householdId,
         p_plan: planId,
       });
       if (error) throw error;
+      // The exact terms shown next to the checkbox, stored with the consent
+      // time and repeated in the "plan started" email.
+      const { error: consentError } = await supabase.rpc("record_renewal_consent", {
+        p_subscription: subId as string,
+        p_terms: renewalTerms(plan, c, kids.length, settings?.contact_email ?? null),
+      });
+      if (consentError) throw consentError;
       check(
         await supabase
           .from("households")

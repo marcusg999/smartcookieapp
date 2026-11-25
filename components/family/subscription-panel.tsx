@@ -28,6 +28,8 @@ export type PlanCard = {
   priceLabel: string;
   intervalLabel: string;
   points: string[];
+  /** California auto-renewal disclosure, shown next to the start button. */
+  renewalTerms?: string;
 };
 
 type Sub = {
@@ -82,9 +84,11 @@ export function SubscriptionPanel({
   const [pay, setPay] = useState<{ clientSecret: string; amountCents: number } | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  const [consent, setConsent] = useState<Record<string, boolean>>({});
   const startPlan = (planId: string) =>
     start(async () => {
-      const res = await choosePlan({ planId });
+      if (!consent[planId]) return void toast.error(copy.arl_required);
+      const res = await choosePlan({ planId, renewalConsent: true });
       if (!res.ok) return void toast.error(res.message);
       if (res.data?.kind === "client_secret") {
         setPay({ clientSecret: res.data.clientSecret!, amountCents: res.data.amountCents! });
@@ -324,17 +328,40 @@ export function SubscriptionPanel({
                     {copy.current}
                   </span>
                 ) : (
-                  <Button
-                    className="mt-4"
-                    disabled={pending}
-                    onClick={() => {
-                      if (!sub) return startPlan(p.id);
-                      if (confirm(copy.change_explain)) run(() => changePlan({ subscriptionId: sub.id, planId: p.id }));
-                    }}
-                  >
-                    {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
-                    {sub ? copy.change : copy.start}
-                  </Button>
+                  <>
+                    {!sub && p.renewalTerms ? (
+                      <div className="mt-4 rounded-xl border-2 border-ink bg-card p-3 text-sm">
+                        <p className="font-bold" id={`arl-h-${p.id}`}>
+                          {copy.arl_heading}
+                        </p>
+                        <p className="mt-1" id={`arl-${p.id}`}>
+                          {p.renewalTerms}
+                        </p>
+                        <label className="mt-2 flex items-start gap-2 font-semibold">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 size-5 shrink-0 accent-ink"
+                            checked={Boolean(consent[p.id])}
+                            aria-describedby={`arl-${p.id}`}
+                            onChange={(e) => setConsent({ ...consent, [p.id]: e.target.checked })}
+                          />
+                          <span>{copy.arl_consent}</span>
+                        </label>
+                      </div>
+                    ) : null}
+                    <Button
+                      className="mt-4"
+                      disabled={pending}
+                      onClick={() => {
+                        if (!sub) return startPlan(p.id);
+                        if (confirm(copy.change_explain))
+                          run(() => changePlan({ subscriptionId: sub.id, planId: p.id }));
+                      }}
+                    >
+                      {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+                      {sub ? copy.change : copy.start}
+                    </Button>
+                  </>
                 )}
               </li>
             );

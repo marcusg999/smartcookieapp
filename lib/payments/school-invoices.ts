@@ -251,20 +251,16 @@ export async function payInvoiceOutOfBand(stripeInvoiceId: string | null, invoic
 }
 
 async function queueInvoiceEmail(admin: Admin, invoiceId: string, to: string) {
-  const { data: existing } = await admin
-    .from("notifications_log")
-    .select("id")
-    .eq("template_key", "school_invoice")
-    .contains("payload", { invoice_id: invoiceId })
-    .limit(1);
-  if (existing?.length) return;
   const { data: inv } = await admin.from("invoices").select("organization_id").eq("id", invoiceId).single();
-  await admin.from("notifications_log").insert({
-    to_address: to,
-    template_key: "school_invoice",
-    status: "queued",
-    organization_id: inv?.organization_id ?? null,
-    payload: { invoice_id: invoiceId },
+  // One "invoice issued" email per invoice, however often this runs (dedupe key).
+  await mustRpc(admin, "queue_email", {
+    p_template: "school_invoice",
+    p_to: to,
+    p_payload: { invoice_id: invoiceId },
+    p_dedupe: `school_invoice:${invoiceId}`,
+    p_household: null,
+    p_org: inv?.organization_id ?? null,
+    p_user: null,
   });
 }
 

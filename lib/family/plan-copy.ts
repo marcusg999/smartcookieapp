@@ -34,3 +34,26 @@ export function describePlan(p: Plan, c: Content) {
     weeklyMeals: weeklyShare(p.meals_per_interval, p.billing_interval),
   };
 }
+
+/**
+ * California Automatic Renewal Law (Bus. & Prof. Code §17602) disclosure for
+ * a plan: that it renews until cancelled, how much and how often, any trial
+ * or minimum term, and how to cancel. Shown next to "Start this plan" and
+ * stored with the parent's consent (the same text goes in the "plan started"
+ * email). Built on the server from the plan row and CMS wording, never from
+ * anything the browser sends.
+ */
+export function renewalTerms(p: Plan, c: Content, kids: number, contactEmail: string | null): string {
+  const qty = p.allowance_unit === "per_child" ? Math.max(1, kids) : 1;
+  const amount = formatCents(p.price_cents * qty, p.currency);
+  const every = c.text(`sub.arl_every_${p.billing_interval}`);
+  return [
+    c.text("sub.arl_renews", { amount, every }),
+    qty > 1 ? c.text("sub.arl_per_child", { price: formatCents(p.price_cents, p.currency), count: String(qty) }) : "",
+    p.trial_intervals > 0 ? c.text("sub.arl_trial", { count: String(p.trial_intervals), amount }) : "",
+    p.min_commitment_intervals > 0 ? c.text("sub.arl_min_term", { count: String(p.min_commitment_intervals) }) : "",
+    c.text("sub.arl_cancel", { email: contactEmail ?? "" }),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}

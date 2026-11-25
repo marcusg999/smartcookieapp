@@ -25,6 +25,12 @@ export const serverOnlySchema = z.object({
   STRIPE_SECRET_KEY: z.string().regex(/^(sk|rk)_(test|live)_/, "must be a Stripe secret or restricted key"),
   STRIPE_WEBHOOK_SECRET: z.string().regex(/^whsec_/, "must start with whsec_"),
   RESEND_API_KEY: z.string().regex(/^re_/, "must start with re_"),
+  // Optional: the From address for app email, on your verified sending domain
+  // (e.g. "hello@mail.smartcookie.com"). Defaults to the contact email in Settings.
+  EMAIL_FROM: z.email().optional(),
+  // Optional, development / CI only: deliver app email to a local Mailpit
+  // (http://127.0.0.1:54324) when no real Resend key is set.
+  MAILPIT_URL: url.optional(),
   TURNSTILE_SECRET_KEY: z.string().min(1),
   UPSTASH_REDIS_REST_URL: url,
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
@@ -67,6 +73,13 @@ export const envSchema = publicSchema.extend(serverOnlySchema.shape).superRefine
       ["NEXT_PUBLIC_SITE_URL", !env.NEXT_PUBLIC_SITE_URL.startsWith("https://"), "must be https in production"],
     ];
     for (const [key, bad, message] of prodChecks) if (bad) ctx.addIssue({ code: "custom", path: [key], message });
+    if (env.MAILPIT_URL !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["MAILPIT_URL"],
+        message: "is for local development; unset it in production",
+      });
+    }
     if (env.STEP_UP_MAX_AGE_SECONDS !== undefined) {
       ctx.addIssue({
         code: "custom",

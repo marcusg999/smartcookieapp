@@ -13,13 +13,23 @@ import type { RichNode } from "@/lib/validation/rich-text";
 
 import { previewEmail, saveEmailTemplate, sendTestEmail } from "../actions";
 
-type T = { key: string; subject: string; preheader: string; body: RichNode; is_active: boolean };
+type T = { key: string; subject: string; preheader: string; cta_label: string; body: RichNode; is_active: boolean };
+type Preview = { subject: string; html: string; darkHtml: string };
 
-export function EmailEditor({ template, variables }: { template: T; variables: { name: string; label: string }[] }) {
+export function EmailEditor({
+  template,
+  variables,
+  hasButton,
+}: {
+  template: T;
+  variables: { name: string; label: string }[];
+  hasButton: boolean;
+}) {
   const [t, setT] = useState(template);
   const [saved, setSaved] = useState(JSON.stringify(template));
   const [saving, setSaving] = useState(false);
-  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [dark, setDark] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const dirty = useMemo(() => JSON.stringify(t) !== saved, [t, saved]);
   useUnsavedGuard(dirty);
@@ -48,6 +58,16 @@ export function EmailEditor({ template, variables }: { template: T; variables: {
             onChange={(e) => setT({ ...t, preheader: e.target.value })}
           />
         </Field>
+        {hasButton ? (
+          <Field id="em-cta" label="Button text" help="The button links to the right page automatically. Leave empty for no button.">
+            <Input
+              id="em-cta"
+              value={t.cta_label}
+              maxLength={60}
+              onChange={(e) => setT({ ...t, cta_label: e.target.value })}
+            />
+          </Field>
+        ) : null}
         <Field id="em-body" label="Message">
           <RichTextEditor
             key={editorKey}
@@ -81,7 +101,7 @@ export function EmailEditor({ template, variables }: { template: T; variables: {
             variant="outline"
             onClick={async () => {
               const r = await previewEmail(t);
-              if (r.ok && r.data) setPreview(r.data as { subject: string; html: string });
+              if (r.ok && r.data) setPreview(r.data as Preview);
               else if (!r.ok) toast.error(r.message);
             }}
           >
@@ -101,14 +121,19 @@ export function EmailEditor({ template, variables }: { template: T; variables: {
       <div className="rounded-2xl border-2 border-ink bg-paper p-3">
         {preview ? (
           <>
-            <p className="mb-2 px-2 text-sm">
-              <strong>Subject:</strong> {preview.subject}
-            </p>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 text-sm">
+              <p>
+                <strong>Subject:</strong> {preview.subject}
+              </p>
+              <ChipToggle pressed={dark} onPressedChange={setDark}>
+                {dark ? "Dark mode preview" : "Light mode preview"}
+              </ChipToggle>
+            </div>
             {/* Sandboxed: no scripts, no same-origin access. */}
             <iframe
               title="Email preview"
               sandbox=""
-              srcDoc={preview.html}
+              srcDoc={dark ? preview.darkHtml : preview.html}
               className="h-[640px] w-full rounded-lg border-2 border-ink bg-white"
             />
           </>
