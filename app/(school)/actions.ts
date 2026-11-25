@@ -219,6 +219,7 @@ export async function inviteStaff(input: z.input<typeof inviteStaffSchema>) {
     // admin of an approved school) and grant_role re-checks it in the database.
     const admin = createAdminClient();
     let userId = (await admin.rpc("find_user_id_for_invite", { p_email: d.email })).data as string | null;
+    const existing = Boolean(userId);
     if (!userId) {
       const { data, error } = await admin.auth.admin.inviteUserByEmail(d.email, {
         redirectTo: new URL("/auth/confirm?next=/school", env.NEXT_PUBLIC_SITE_URL).toString(),
@@ -234,6 +235,19 @@ export async function inviteStaff(input: z.input<typeof inviteStaffSchema>) {
     }
     const { error } = await supabase.rpc("grant_role", { p_user: userId, p_role: "school_staff", p_org: orgId });
     if (error && error.code !== "23505") throw error;
+    // People who already have an account get a "you've been added" email
+    // (new people get Supabase's invitation instead). Once per person per school.
+    if (existing && !error) {
+      await admin.rpc("queue_email", {
+        p_template: "school_staff_added",
+        p_to: d.email,
+        p_payload: {},
+        p_dedupe: `school_staff_added:${orgId}:${userId}`,
+        p_household: null,
+        p_org: orgId,
+        p_user: userId,
+      });
+    }
     await audit("school.staff_invited", { entityType: "organization", entityId: orgId, metadata: { by: user.id } });
     return done();
   });

@@ -4,6 +4,7 @@
  * (seeded in supabase/seed.sql, edited in /admin/content); this registry only
  * describes each key so the admin can group and label them.
  */
+import { EMAIL_CONTENT_GROUPS } from "./email-registry.ts";
 import { SCHOOL_CONTENT_GROUPS } from "./school-registry.ts";
 
 export type ContentType = "text" | "rich_text" | "image" | "json" | "cta";
@@ -866,6 +867,7 @@ export const CONTENT_GROUPS: ContentGroup[] = [
   },
   ...FAMILY_CONTENT_GROUPS,
   ...SCHOOL_CONTENT_GROUPS,
+  ...EMAIL_CONTENT_GROUPS,
 ];
 
 export const CONTENT_KEYS: string[] = CONTENT_GROUPS.flatMap((g) => g.items.map((i) => i.key));

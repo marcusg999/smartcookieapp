@@ -58,6 +58,13 @@ const schema = z.object({
     use_by_days: z.number().int().min(1).max(14),
     meals_per_bag: z.number().int().min(1).max(100),
   }),
+  // Phase 9: email timing and the CAN-SPAM postal address.
+  email_settings: z.object({
+    cutoff_reminder_hours: z.number().int().min(1).max(96),
+    renewal_reminder_days: z.number().int().min(1).max(14),
+    postal_address: z.string().trim().max(200),
+    reply_to: z.union([z.literal(""), z.email()]),
+  }),
   logo_path: z.string().max(300).nullable(),
 });
 

@@ -1,9 +1,34 @@
-<!-- Local-dev template. Production copy moves to the CMS / React Email later. -->
-<h2>Reset your password</h2>
-<p>Someone asked to reset your Smart Cookie password. If it wasn't you, ignore this email.</p>
-<p>
-  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password"
-    >Choose a new password</a
-  >
-</p>
-<p>If you didn't request this, you can ignore this email.</p>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Reset your password</title>
+<style>
+  @media (prefers-color-scheme: dark) {
+    .sc-body { background-color: #151311 !important; }
+    .sc-card { background-color: #23201d !important; border-color: #f4f1ea !important; }
+    .sc-text, .sc-text * { color: #f4f1ea !important; }
+    .sc-button { background-color: #f4b4b6 !important; color: #151311 !important; }
+  }
+  @media (max-width: 600px) { .sc-card { padding: 20px !important; } }
+</style>
+</head>
+<!-- Smart Cookie auth email (Supabase Auth template, Phase 9). Same look as the React Email layout. -->
+<body class="sc-body" style="margin:0;padding:24px 8px;background-color:#fbeeea;font-family:Helvetica,Arial,sans-serif;color:#1f3b2d;">
+  <div class="sc-card sc-text" style="max-width:560px;margin:0 auto;background-color:#ffffff;border:2px solid #1f3b2d;border-radius:16px;padding:32px;">
+    <div style="border-bottom:4px solid #f4b4b6;padding-bottom:12px;margin-bottom:20px;">
+      <img src="{{ .SiteURL }}/icons/icon-192.png" width="48" height="48" alt="" style="vertical-align:middle;margin-right:10px;">
+      <span style="font-family:Georgia,serif;font-style:italic;font-size:24px;font-weight:bold;vertical-align:middle;">Smart Cookie</span>
+    </div>
+    <h1 style="font-size:22px;margin:0 0 14px;">Reset your password</h1>
+    <p style="font-size:16px;line-height:24px;margin:0 0 14px;">Someone (hopefully you) asked to reset the password for this account.</p>
+    <p style="margin:8px 0 20px;"><a class="sc-button" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password" style="display:inline-block;background-color:#1f3b2d;color:#ffffff;border-radius:10px;padding:14px 22px;font-size:16px;font-weight:bold;text-decoration:none;">Choose a new password</a></p>
+    <p style="font-size:12px;color:#5a4a48;margin:0 0 14px;word-break:break-all;">Or paste this link into your browser: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password</p>
+    <hr style="border:none;border-top:1px solid #f4b4b6;margin:28px 0 12px;">
+    <p style="font-size:12px;line-height:18px;color:#5a4a48;margin:0;">If you didn't ask for this, you can ignore this email. The link works once.</p>
+  </div>
+</body>
+</html>

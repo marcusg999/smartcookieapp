@@ -1,12 +1,17 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
+import { headers } from "next/headers";
 import { forbidden, notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { fail, GENERIC, type ActionResult } from "./action-result";
+import { deviceLabel } from "./device";
 import { safeNext } from "./redirect";
 import { isAppRole, isStaff, secondsSinceMfa, type AppRole } from "./roles";
 
@@ -145,9 +150,26 @@ export function homeFor(roles: readonly AppRole[]): string {
  * Server Action doesn't pass through the proxy. `next` is honoured only if it
  * is a safe relative path the user may open.
  */
+/**
+ * Owner accounts get a security email when they sign in from a device they
+ * haven't used before (Phase 9). Never blocks sign-in.
+ */
+async function noteOwnerDevice(userId: string) {
+  try {
+    const label = deviceLabel((await headers()).get("user-agent"));
+    const hash = createHash("sha256").update(`${userId}:${label}`).digest("hex");
+    // Service role: known_devices has no user policies; record_sign_in_device
+    // is granted to the service role only and queues the alert.
+    await createAdminClient().rpc("record_sign_in_device", { p_user: userId, p_device_hash: hash, p_device_label: label });
+  } catch (error) {
+    console.error("recording the sign-in device failed", { message: (error as Error).message });
+  }
+}
+
 export async function postSignInDestination(next: string | null | undefined): Promise<string> {
   const user = await getUser();
   if (!user) return "/sign-in";
+  if (user.roles.includes("owner")) await noteOwnerDevice(user.id);
   if (isStaff(user.roles) && user.aal !== "aal2") {
     const supabase = await createClient();
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();

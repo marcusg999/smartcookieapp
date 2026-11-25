@@ -404,6 +404,65 @@ export function SettingsForm({ settings }: { settings: SettingsInput }) {
         </Field>
       </Section>
 
+      <Section title="Email">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            id="cutoff-reminder-hours"
+            label="Order reminder: hours before cutoff"
+            help="Families who haven't ordered (and subscribers with meals to pick) get one reminder."
+          >
+            <Input
+              id="cutoff-reminder-hours"
+              type="number"
+              min={1}
+              max={96}
+              value={s.email_settings.cutoff_reminder_hours}
+              onChange={(e) =>
+                set("email_settings", {
+                  ...s.email_settings,
+                  cutoff_reminder_hours: Math.min(96, Math.max(1, Number(e.target.value || 1))),
+                })
+              }
+            />
+          </Field>
+          <Field id="renewal-reminder-days" label="Plan renewal notice: days before" help="For monthly plans.">
+            <Input
+              id="renewal-reminder-days"
+              type="number"
+              min={1}
+              max={14}
+              value={s.email_settings.renewal_reminder_days}
+              onChange={(e) =>
+                set("email_settings", {
+                  ...s.email_settings,
+                  renewal_reminder_days: Math.min(14, Math.max(1, Number(e.target.value || 1))),
+                })
+              }
+            />
+          </Field>
+          <Field
+            id="postal-address"
+            label="Mailing address for email footers"
+            help="Required by law (CAN-SPAM) in optional emails like the weekly menu. A PO box is fine."
+          >
+            <Input
+              id="postal-address"
+              value={s.email_settings.postal_address}
+              maxLength={200}
+              onChange={(e) => set("email_settings", { ...s.email_settings, postal_address: e.target.value })}
+            />
+          </Field>
+          <Field id="reply-to" label="Replies go to" help="Leave empty to use the contact email.">
+            <Input
+              id="reply-to"
+              type="email"
+              value={s.email_settings.reply_to}
+              onChange={(e) => set("email_settings", { ...s.email_settings, reply_to: e.target.value })}
+            />
+          </Field>
+        </div>
+      </Section>
+
       <UnsavedBar
         dirty={dirty}
         saving={saving}

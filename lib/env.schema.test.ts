@@ -58,7 +58,12 @@ describe("env schema", () => {
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: "0x4AAAAAAAreal",
     TURNSTILE_SECRET_KEY: "0x4AAAAAAAreal-secret",
     UPSTASH_REDIS_REST_URL: "https://real-db.upstash.io",
+    MAILPIT_URL: undefined,
   };
+
+  it("refuses the local Mailpit transport in production", () => {
+    expect(envSchema.safeParse({ ...production, MAILPIT_URL: "http://127.0.0.1:54324" }).success).toBe(false);
+  });
 
   it("accepts a production config with live keys", () => {
     expect(envSchema.safeParse(production).success).toBe(true);

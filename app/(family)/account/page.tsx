@@ -4,6 +4,7 @@ import {
   CalendarX,
   KeyRound,
   Lock,
+  Mail,
   MapPin,
   Repeat2,
   ShieldCheck,
@@ -77,6 +78,12 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       icon: ShieldCheck,
       title: c.text("account.security.title"),
       body: c.text("account.security.body"),
+    },
+    {
+      href: "/account/notifications",
+      icon: Mail,
+      title: c.text("account.notify.title"),
+      body: c.text("account.notify.body"),
     },
     {
       href: "/account/privacy",
