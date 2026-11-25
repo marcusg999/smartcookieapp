@@ -39,6 +39,7 @@ const TYPES = [
   "invoice.finalized",
   "invoice.voided",
   "invoice.overdue",
+  "invoice.marked_uncollectible",
 ];
 
 async function refetch(type: string, id: string): Promise<unknown> {

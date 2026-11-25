@@ -7,13 +7,14 @@ vi.mock("@/lib/env", () => ({
 const { LIMITS, clientIp, hashIdentifier } = await import("./ratelimit");
 
 describe("rate limit configuration", () => {
-  it("defines the named limiters (spec four + Phase 5 family and code checks)", () => {
+  it("defines the named limiters (spec four + Phase 5 family and code checks + Phase 7 school)", () => {
     expect(LIMITS).toEqual({
       auth: { tokens: 5, window: "1 m" },
       magicLink: { tokens: 3, window: "15 m" },
       checkout: { tokens: 10, window: "1 m" },
       adminMutation: { tokens: 60, window: "1 m" },
       familyMutation: { tokens: 90, window: "1 m" },
+      schoolMutation: { tokens: 60, window: "1 m" },
       codeCheck: { tokens: 8, window: "1 m" },
     });
   });

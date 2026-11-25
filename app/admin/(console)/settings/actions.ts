@@ -48,6 +48,9 @@ const schema = z.object({
   }),
   // Largest single refund ops staff may issue (owners are unlimited).
   ops_refund_limit_cents: z.number().int().min(0).max(1_000_000),
+  // Phase 7: day of the month school invoices go out; overdue suspension.
+  school_invoice_day: z.number().int().min(1).max(28),
+  school_overdue_suspend_days: z.number().int().min(1).max(120).nullable(),
   logo_path: z.string().max(300).nullable(),
 });
 

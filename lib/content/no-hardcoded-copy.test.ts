@@ -9,7 +9,14 @@ import { describe, expect, it } from "vitest";
  * JSX under the marketing and family areas (and their components) must come from content_blocks
  * (lib/content). Anything with two or more words counts as a sentence.
  */
-const ROOTS = ["app/(marketing)", "app/(family)", "components/family", "components/marketing"];
+const ROOTS = [
+  "app/(marketing)",
+  "app/(family)",
+  "app/(school)",
+  "components/family",
+  "components/marketing",
+  "components/school",
+];
 
 const ALLOW_FILES = new Set<string>();
 

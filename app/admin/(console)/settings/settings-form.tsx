@@ -312,6 +312,39 @@ export function SettingsForm({ settings }: { settings: SettingsInput }) {
         </Field>
       </Section>
 
+      <Section title="School billing">
+        <Field
+          id="school-invoice-day"
+          label="Monthly invoice day"
+          help="School invoices for last month go out on this day (1 to 28)."
+        >
+          <Input
+            id="school-invoice-day"
+            type="number"
+            min={1}
+            max={28}
+            value={s.school_invoice_day}
+            onChange={(e) => set("school_invoice_day", Math.min(28, Math.max(1, Number(e.target.value || 1))))}
+            className="max-w-24"
+          />
+        </Field>
+        <Field
+          id="school-suspend-days"
+          label="Pause new standing-order weeks when an invoice is this many days overdue"
+          help="Leave empty to never pause. Weeks already planned are kept."
+        >
+          <Input
+            id="school-suspend-days"
+            type="number"
+            min={1}
+            max={120}
+            value={s.school_overdue_suspend_days ?? ""}
+            onChange={(e) => set("school_overdue_suspend_days", e.target.value ? Number(e.target.value) : null)}
+            className="max-w-24"
+          />
+        </Field>
+      </Section>
+
       <UnsavedBar
         dirty={dirty}
         saving={saving}

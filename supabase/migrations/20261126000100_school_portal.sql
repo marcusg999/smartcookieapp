@@ -1530,6 +1530,39 @@ as $$
 $$;
 
 -- ═════════════════════════════════════════════════════════════════════════════
+-- School staff list and invites
+-- ═════════════════════════════════════════════════════════════════════════════
+-- The school admin sees who has access to their school (name and email of
+-- their own members only).
+create function public.school_members(p_org uuid)
+returns table (user_id uuid, role public.app_role, email text, full_name text, granted_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select ur.user_id, ur.role, u.email::text, p.full_name, ur.granted_at
+  from public.user_roles ur
+  join auth.users u on u.id = ur.user_id
+  left join public.profiles p on p.id = ur.user_id
+  where ur.organization_id = p_org and coalesce(public.org_role(p_org) = 'school_admin', false)
+  order by (ur.role = 'school_admin') desc, ur.granted_at;
+$$;
+
+-- Server-side invite helper (service role only): the invite action shows the
+-- same message whether or not the email already has an account, so school
+-- admins can't use it to probe who is registered.
+create function public.find_user_id_for_invite(p_email text)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select u.id from auth.users u where lower(u.email) = lower(btrim(p_email)) limit 1;
+$$;
+
+-- ═════════════════════════════════════════════════════════════════════════════
 -- Schedules, email templates, privileges
 -- ═════════════════════════════════════════════════════════════════════════════
 select cron.schedule('materialize-standing-orders', '7 * * * *', $$select public.materialize_standing_orders()$$);
@@ -1557,7 +1590,7 @@ revoke execute on function
   public._materialize_standing_order(uuid, uuid, boolean), public._refresh_standing_orders(uuid, uuid, uuid, uuid),
   public.materialize_standing_orders(), public.trg_standing_order_refresh(), public.trg_classroom_refresh(),
   public.trg_child_school_refresh(), public.trg_organization_refresh(), public._assert_week_open_for(date),
-  public.schools_to_invoice(date),
+  public.schools_to_invoice(date), public.find_user_id_for_invite(text),
   public.stripe_school_invoice_event(text, uuid, text, integer, text, text, text, date),
   public.queue_school_invoice_reminders()
   from public, anon, authenticated;
@@ -1567,7 +1600,7 @@ revoke execute on function
   public.set_standing_order_day(uuid, date, integer, boolean, uuid[], text, boolean),
   public.set_school_closure(uuid, date, text, boolean), public.mark_school_week_reviewed(uuid, uuid),
   public.create_school_bulk_order(uuid, uuid, jsonb, text, text), public.cancel_school_bulk_order(uuid),
-  public.review_school_link(uuid, boolean), public.school_spend(uuid),
+  public.review_school_link(uuid, boolean), public.school_spend(uuid), public.school_members(uuid),
   public.prepare_school_invoice(uuid, date, date, text), public.mark_invoice_paid_out_of_band(uuid, text), public.ar_aging()
   from public, anon;
 grant execute on function
@@ -1576,11 +1609,11 @@ grant execute on function
   public.set_standing_order_day(uuid, date, integer, boolean, uuid[], text, boolean),
   public.set_school_closure(uuid, date, text, boolean), public.mark_school_week_reviewed(uuid, uuid),
   public.create_school_bulk_order(uuid, uuid, jsonb, text, text), public.cancel_school_bulk_order(uuid),
-  public.review_school_link(uuid, boolean), public.school_spend(uuid),
+  public.review_school_link(uuid, boolean), public.school_spend(uuid), public.school_members(uuid),
   public.prepare_school_invoice(uuid, date, date, text), public.mark_invoice_paid_out_of_band(uuid, text), public.ar_aging()
   to authenticated;
 -- The webhook and scheduled jobs use the service role.
-grant execute on function public.schools_to_invoice(date),
+grant execute on function public.schools_to_invoice(date), public.find_user_id_for_invite(text),
   public.stripe_school_invoice_event(text, uuid, text, integer, text, text, text, date),
   public.queue_school_invoice_reminders(), public.materialize_standing_orders(),
   public.prepare_school_invoice(uuid, date, date, text)

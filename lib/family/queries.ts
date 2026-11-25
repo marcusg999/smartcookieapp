@@ -28,6 +28,7 @@ export type Child = {
   last_initial: string | null;
   school_id: string | null;
   classroom_id: string | null;
+  school_link_status: "pending" | "approved" | "rejected" | null;
   grade: string | null;
   dietary_preferences: string[];
   notes: string | null;
@@ -115,7 +116,7 @@ export const getChildren = cache(async (householdId: string): Promise<Child[]> =
   const { data } = await supabase
     .from("children")
     .select(
-      `id, first_name, last_initial, school_id, classroom_id, grade, dietary_preferences, notes,
+      `id, first_name, last_initial, school_id, classroom_id, school_link_status, grade, dietary_preferences, notes,
        child_allergens ( severity, allergen_id, allergens ( name, sort_order ) ),
        allergy_overrides ( menu_item_id, revoked_at )`,
     )

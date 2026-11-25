@@ -262,6 +262,7 @@ export function ChildForm({
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground">{copy.link_help}</p>
           </div>
         ) : null}
       </div>

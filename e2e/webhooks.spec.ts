@@ -198,3 +198,92 @@ test("invoice.payment_failed queues the update-your-card email", async ({ reques
   const { data: n } = await admin.from("notifications_log").select("template_key").eq("household_id", hm!.household_id);
   expect(n?.map((x) => x.template_key)).toContain("payment_failed");
 });
+
+test("school invoices: paid marks the invoice paid; a late 'finalized' never re-opens it; voided releases its meals", async ({
+  request,
+}) => {
+  const { data: org } = await admin
+    .from("organizations")
+    .insert({ name: `WH School ${randomUUID().slice(0, 6)}`, status: "approved", billing_email: "wh@example.com" })
+    .select("id")
+    .single();
+  const { data: week } = await admin.from("menu_weeks").select("id").eq("status", "published").limit(1).single();
+  const { data: order } = await admin
+    .from("orders")
+    .insert({
+      organization_id: org!.id,
+      menu_week_id: week!.id,
+      source: "admin",
+      status: "invoiced",
+      fulfillment: "school_dropoff",
+      subtotal_cents: 1000,
+      total_cents: 1000,
+    })
+    .select("id")
+    .single();
+  const { data: line } = await admin
+    .from("order_items")
+    .insert({
+      order_id: order!.id,
+      delivery_date: "2026-01-05",
+      quantity: 2,
+      unit_price_cents: 500,
+      item_name: "Rice bowl",
+    })
+    .select("id")
+    .single();
+  const { data: invId } = await admin.rpc("prepare_school_invoice", {
+    p_org: org!.id,
+    p_period_start: "2026-01-01",
+    p_period_end: "2026-01-31",
+    p_kind: "monthly",
+  });
+  const stripeId = `in_test_${randomUUID().slice(0, 8)}`;
+  const invoice = (extra: Record<string, unknown> = {}) => ({
+    id: stripeId,
+    object: "invoice",
+    metadata: { invoice_id: invId },
+    parent: null,
+    amount_paid: 0,
+    hosted_invoice_url: "https://invoice.stripe.com/i/test",
+    invoice_pdf: "https://pay.stripe.com/invoice/test/pdf",
+    number: "SC-TEST-0001",
+    due_date: Math.floor(Date.now() / 1000) + 15 * 86_400,
+    ...extra,
+  });
+  const status = async () => (await admin.from("invoices").select("status, number").eq("id", invId).single()).data;
+
+  expect((await deliver(request, evt("invoice.finalized", invoice()))).status()).toBe(200);
+  expect(await status()).toEqual({ status: "open", number: "SC-TEST-0001" });
+  expect((await deliver(request, evt("invoice.paid", invoice({ amount_paid: 1000 })))).status()).toBe(200);
+  expect((await status())!.status).toBe("paid");
+  // Out of order: a late finalized event leaves it paid.
+  expect(
+    (await deliver(request, evt("invoice.finalized", invoice(), Math.floor(Date.now() / 1000) - 60))).status(),
+  ).toBe(200);
+  expect((await status())!.status).toBe("paid");
+
+  // A second invoice that gets voided: its meals go back to be billed again.
+  await admin.from("order_items").update({ invoice_id: null }).eq("id", line!.id);
+  await admin.from("invoices").update({ status: "void" }).eq("id", invId);
+  const { data: inv2 } = await admin.rpc("prepare_school_invoice", {
+    p_org: org!.id,
+    p_period_start: "2026-01-01",
+    p_period_end: "2026-01-31",
+    p_kind: "on_demand",
+  });
+  const stripeId2 = `in_test_${randomUUID().slice(0, 8)}`;
+  await admin.from("invoices").update({ stripe_invoice_id: stripeId2, status: "open" }).eq("id", inv2);
+  expect(
+    (
+      await deliver(
+        request,
+        evt("invoice.voided", { id: stripeId2, object: "invoice", metadata: { invoice_id: inv2 }, parent: null }),
+      )
+    ).status(),
+  ).toBe(200);
+  expect((await admin.from("invoices").select("status").eq("id", inv2).single()).data!.status).toBe("void");
+  expect(
+    (await admin.from("order_items").select("invoice_id").eq("id", line!.id).single()).data!.invoice_id,
+  ).toBeNull();
+});

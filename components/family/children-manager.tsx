@@ -78,9 +78,19 @@ export function ChildrenManager({
                     {k.last_initial ? ` ${k.last_initial}.` : ""}
                   </h2>
                   {k.school_id ? (
-                    <p className="text-sm text-muted-foreground">
-                      {[schoolName(k.school_id), roomName(k.classroom_id), k.grade].filter(Boolean).join(" · ")}
-                    </p>
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        {[schoolName(k.school_id), roomName(k.classroom_id), k.grade].filter(Boolean).join(" · ")}
+                      </p>
+                      {k.school_link_status ? (
+                        <p
+                          className={`text-xs font-semibold ${k.school_link_status === "rejected" ? "text-destructive" : "text-muted-foreground"}`}
+                          title={copy.link_help}
+                        >
+                          {copy[`link_${k.school_link_status}`]}
+                        </p>
+                      ) : null}
+                    </>
                   ) : k.grade ? (
                     <p className="text-sm text-muted-foreground">{k.grade}</p>
                   ) : null}

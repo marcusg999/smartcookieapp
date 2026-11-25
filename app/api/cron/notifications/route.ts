@@ -1,20 +1,13 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
+import { cronAuthorized } from "@/lib/cron/auth";
 import { sendTemplate } from "@/lib/email/send";
 import { env } from "@/lib/env";
+import { formatCents } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatDay } from "@/lib/time";
+import { formatDay, formatInZone } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
-
-function authorized(header: string | null): boolean {
-  if (!env.CRON_SECRET || !header) return false;
-  const expected = Buffer.from(`Bearer ${env.CRON_SECRET}`);
-  const given = Buffer.from(header);
-  return given.length === expected.length && timingSafeEqual(given, expected);
-}
 
 /**
  * Scheduled job (Vercel Cron, every 15 minutes): sends queued notifications,
@@ -22,14 +15,14 @@ function authorized(header: string | null): boolean {
  * auto-fill itself runs in Postgres (pg_cron → auto_fill_due_weeks).
  */
 export async function GET(request: Request) {
-  if (!authorized(request.headers.get("authorization"))) return new NextResponse(null, { status: 401 });
+  if (!cronAuthorized(request.headers.get("authorization"))) return new NextResponse(null, { status: 401 });
 
   // Service role: a background job with no user session; it reads queued
   // rows and order lines across households to email each family their own.
   const admin = createAdminClient();
   const { data: queued } = await admin
     .from("notifications_log")
-    .select("id, to_address, template_key, payload, household_id")
+    .select("id, to_address, template_key, payload, household_id, organization_id")
     .eq("status", "queued")
     .order("sent_at")
     .limit(50);
@@ -45,7 +38,14 @@ export async function GET(request: Request) {
       .select("id")
       .maybeSingle();
     if (!claimed) continue;
-    const payload = (n.payload ?? {}) as { order_id?: string; week_start?: string };
+    const payload = (n.payload ?? {}) as {
+      order_id?: string;
+      week_start?: string;
+      cutoff?: string;
+      invoice_id?: string;
+      days_overdue?: number;
+      school_name?: string;
+    };
     const { data: who } = n.household_id
       ? await admin.from("households").select("primary_user_id").eq("id", n.household_id).maybeSingle()
       : { data: null };
@@ -56,7 +56,43 @@ export async function GET(request: Request) {
       first_name: (profile?.full_name as string | null)?.split(" ")[0] ?? "there",
       update_card_url: new URL("/subscription?billing=1", env.NEXT_PUBLIC_SITE_URL).toString(),
       week_of: payload.week_start ? formatDay(payload.week_start, { month: "short", day: "numeric" }) : "",
+      cutoff: payload.cutoff ? formatInZone(payload.cutoff, "America/Los_Angeles") : "",
+      portal_url: new URL("/school", env.NEXT_PUBLIC_SITE_URL).toString(),
+      school_name: payload.school_name ?? "",
     };
+    if (n.organization_id) {
+      // School emails (Phase 7): school name, admin link, invoice details.
+      const { data: org } = await admin.from("organizations").select("name").eq("id", n.organization_id).maybeSingle();
+      vars.school_name ||= (org?.name as string | undefined) ?? "";
+      vars.admin_url = new URL(`/admin/schools/${n.organization_id}`, env.NEXT_PUBLIC_SITE_URL).toString();
+    }
+    if (payload.invoice_id) {
+      const { data: inv } = await admin
+        .from("invoices")
+        .select(
+          "number, period_start, period_end, total_cents, amount_paid_cents, due_date, hosted_invoice_url, status",
+        )
+        .eq("id", payload.invoice_id)
+        .maybeSingle();
+      // A reminder for an invoice that has since been paid is dropped.
+      if (inv && n.template_key === "school_invoice_reminder" && inv.status !== "open") {
+        await admin
+          .from("notifications_log")
+          .update({ status: "failed", error: "invoice no longer open" })
+          .eq("id", n.id);
+        continue;
+      }
+      if (inv) {
+        const day = (d: string) => formatDay(d, { month: "short", day: "numeric", year: "numeric" });
+        vars.invoice_number = (inv.number as string | null) ?? "";
+        vars.period = `${day(inv.period_start as string)} – ${day(inv.period_end as string)}`;
+        vars.amount = formatCents((inv.total_cents as number) - (inv.amount_paid_cents as number));
+        vars.due_date = inv.due_date ? day(inv.due_date as string) : "";
+        vars.invoice_url =
+          (inv.hosted_invoice_url as string | null) ?? new URL("/school/billing", env.NEXT_PUBLIC_SITE_URL).toString();
+        vars.days_overdue = String(payload.days_overdue ?? "");
+      }
+    }
     if (payload.order_id) {
       const { data: order } = await admin
         .from("orders")

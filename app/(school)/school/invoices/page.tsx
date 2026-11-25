@@ -1,7 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Invoices" };
-
-export default function InvoicesPage() {
-  return <PlaceholderPage title="Invoices" description="Monthly invoices and payment history." />;
+// Phase 7 moved invoices into Billing.
+export default function SchoolInvoicesRedirect() {
+  redirect("/school/billing");
 }

@@ -63,6 +63,22 @@ async function queueOrderConfirmation(admin: Admin, orderId: string) {
   });
 }
 
+/** School invoice bookkeeping (Phase 7). Out-of-order safe in SQL. */
+async function schoolInvoiceEvent(admin: Admin, invoice: Stripe.Invoice, kind: string): Promise<string> {
+  const { data, error } = await admin.rpc("stripe_school_invoice_event", {
+    p_stripe_invoice: invoice.id ?? null,
+    p_invoice: invoice.metadata?.invoice_id ?? null,
+    p_event: kind,
+    p_amount_paid: invoice.amount_paid ?? null,
+    p_hosted: invoice.hosted_invoice_url ?? null,
+    p_pdf: invoice.invoice_pdf ?? null,
+    p_number: invoice.number ?? null,
+    p_due: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString().slice(0, 10) : null,
+  });
+  if (error) throw new Error(error.message);
+  return `school_${String(data)}`;
+}
+
 /**
  * Apply one verified Stripe event. Every database change goes through an
  * atomic stripe_* SQL function (one transaction each). Unknown events are
@@ -171,14 +187,12 @@ export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps):
         );
         return "allowances";
       }
-      // School invoices (Phase 7) are mirrored by Stripe id.
-      if (invoice.id) must(await admin.from("invoices").update({ status: "paid" }).eq("stripe_invoice_id", invoice.id));
-      return "invoice_paid";
+      return schoolInvoiceEvent(admin, invoice, "paid");
     }
     case "invoice.payment_failed": {
       const invoice = event.data.object;
       const { stripeSub, ours } = invoiceSubscription(invoice);
-      if (!stripeSub && !ours) return "ignored";
+      if (!stripeSub && !ours) return schoolInvoiceEvent(admin, invoice, "payment_failed");
       must(
         await admin.rpc("stripe_invoice_failed", {
           p_subscription: ours,
@@ -191,12 +205,18 @@ export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps):
     }
     case "invoice.finalized":
     case "invoice.voided":
-    case "invoice.overdue": {
-      // Mirrored for school invoices (Phase 7 builds the school billing UI).
+    case "invoice.overdue":
+    case "invoice.marked_uncollectible": {
+      // School invoices (Phase 7). Subscription invoices need nothing here.
       const invoice = event.data.object;
-      const status = event.type === "invoice.voided" ? "void" : "open";
-      if (invoice.id) must(await admin.from("invoices").update({ status }).eq("stripe_invoice_id", invoice.id));
-      return status;
+      if (invoiceSubscription(invoice).stripeSub) return "ignored";
+      const kind = {
+        "invoice.finalized": "finalized",
+        "invoice.voided": "voided",
+        "invoice.overdue": "overdue",
+        "invoice.marked_uncollectible": "uncollectible",
+      }[event.type];
+      return schoolInvoiceEvent(admin, invoice, kind);
     }
     default:
       return "ignored";

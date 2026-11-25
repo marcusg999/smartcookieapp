@@ -36,6 +36,8 @@ export default async function SettingsPage() {
     pilot_mode: s?.pilot_mode ?? false,
     tax_settings: { enabled: !!tax.enabled, use_stripe_tax: !!tax.use_stripe_tax, rate_bps: tax.rate_bps ?? 0 },
     ops_refund_limit_cents: s?.ops_refund_limit_cents ?? 5000,
+    school_invoice_day: s?.school_invoice_day ?? 1,
+    school_overdue_suspend_days: s?.school_overdue_suspend_days ?? null,
     logo_path: s?.logo_path ?? null,
   };
   return (
