@@ -20,4 +20,7 @@ regexes = [
   '''1x0{20,}AA''',
   '''e2e-only-cron-secret-not-used-in-production-000''',
   '''JBSWY3DPEHPK3PXP''',
+  # Fake passwords for e2e test users and the local seed accounts.
+  '''Correct-horse-battery-42''',
+  '''SmartCookie-local-2026!''',
 ]
