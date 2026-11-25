@@ -60,6 +60,15 @@ export async function GET(request: Request) {
       portal_url: new URL("/school", env.NEXT_PUBLIC_SITE_URL).toString(),
       school_name: payload.school_name ?? "",
     };
+    // Phase 8 emails carry their display values in the payload (written by
+    // database functions): allergy conflict details, delivery date, pay link.
+    for (const [k, v] of Object.entries(payload as Record<string, unknown>)) {
+      if (typeof v === "string" && !(k in vars) && /^[a-z_]{2,40}$/.test(k)) vars[k] = v;
+    }
+    const raw = payload as { delivery_date?: string; order_id?: string };
+    if (raw.delivery_date)
+      vars.delivery_date = formatDay(raw.delivery_date, { weekday: "long", month: "short", day: "numeric" });
+    if (raw.order_id) vars.pay_url = new URL(`/checkout?order=${raw.order_id}`, env.NEXT_PUBLIC_SITE_URL).toString();
     if (n.organization_id) {
       // School emails (Phase 7): school name, admin link, invoice details.
       const { data: org } = await admin.from("organizations").select("name").eq("id", n.organization_id).maybeSingle();

@@ -40,6 +40,14 @@ erDiagram
     timestamptz created_at
     timestamptz archived_at
   }
+  allergy_conflict_alerts {
+    uuid order_item_id PK
+    uuid order_id FK
+    uuid child_id FK
+    text allergens
+    timestamptz detected_at
+    timestamptz resolved_at
+  }
   allergy_overrides {
     uuid id PK
     uuid child_id FK
@@ -143,6 +151,12 @@ erDiagram
     text body
     uuid author_id FK
     timestamptz created_at
+  }
+  deliveries {
+    uuid order_id PK
+    date delivery_date PK
+    timestamptz delivered_at
+    uuid delivered_by FK
   }
   delivery_zones {
     uuid id PK
@@ -270,6 +284,16 @@ erDiagram
     text last_error
     uuid created_by FK
   }
+  late_order_exceptions {
+    uuid id PK
+    uuid menu_week_id FK
+    uuid household_id FK
+    text reason
+    timestamptz expires_at
+    uuid created_by FK
+    timestamptz created_at
+    timestamptz revoked_at
+  }
   media {
     uuid id PK
     text storage_path
@@ -337,6 +361,8 @@ erDiagram
     timestamptz archived_at
     text stripe_price_id
     text stripe_school_price_id
+    text reheat_instructions
+    smallint use_by_days
   }
   menu_template_items {
     uuid id PK
@@ -564,6 +590,11 @@ erDiagram
     timestamptz updated_at
     timestamptz archived_at
   }
+  prep_checks {
+    uuid order_item_id PK
+    uuid checked_by FK
+    timestamptz checked_at
+  }
   profiles {
     uuid id PK
     text full_name
@@ -613,6 +644,7 @@ erDiagram
     text stripe_portal_configuration_id
     smallint school_invoice_day
     smallint school_overdue_suspend_days
+    jsonb kitchen_settings
   }
   standing_order_adjustments {
     uuid id PK
@@ -713,6 +745,9 @@ erDiagram
   households ||--o{ account_credits : "household_id"
   orders ||--o{ account_credits : "order_id"
   households ||--o{ addresses : "household_id"
+  children ||--o{ allergy_conflict_alerts : "child_id"
+  orders ||--o{ allergy_conflict_alerts : "order_id"
+  order_items ||--o{ allergy_conflict_alerts : "order_item_id"
   children ||--o{ allergy_overrides : "child_id"
   menu_items ||--o{ allergy_overrides : "menu_item_id"
   households ||--o{ carts : "household_id"
@@ -729,6 +764,7 @@ erDiagram
   content_blocks ||--o{ content_versions : "block_id"
   households ||--o{ customer_notes : "household_id"
   organizations ||--o{ customer_notes : "organization_id"
+  orders ||--o{ deliveries : "order_id"
   children ||--o{ favorites : "child_id"
   households ||--o{ favorites : "household_id"
   menu_items ||--o{ favorites : "menu_item_id"
@@ -739,6 +775,8 @@ erDiagram
   classrooms ||--o{ invoice_lines : "classroom_id"
   invoices ||--o{ invoice_lines : "invoice_id"
   organizations ||--o{ invoices : "organization_id"
+  households ||--o{ late_order_exceptions : "household_id"
+  menu_weeks ||--o{ late_order_exceptions : "menu_week_id"
   allergens ||--o{ menu_item_allergens : "allergen_id"
   menu_items ||--o{ menu_item_allergens : "menu_item_id"
   dietary_badges ||--o{ menu_item_badges : "badge_id"
@@ -767,6 +805,7 @@ erDiagram
   organizations ||--o{ orders : "organization_id"
   standing_orders ||--o{ orders : "standing_order_id"
   plans ||--o{ plan_price_history : "plan_id"
+  order_items ||--o{ prep_checks : "order_item_id"
   households ||--o{ saved_orders : "household_id"
   organizations ||--o{ school_closures : "organization_id"
   standing_orders ||--o{ standing_order_adjustments : "standing_order_id"

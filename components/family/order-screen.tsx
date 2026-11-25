@@ -629,7 +629,7 @@ export function OrderScreen(props: Props) {
               className={cn(
                 "reveal-up flex flex-col overflow-hidden rounded-2xl border-2 bg-paper transition-[transform,box-shadow] duration-200",
                 blocked.length
-                  ? "border-allergy/60 opacity-80"
+                  ? "border-allergy/60"
                   : "border-ink shadow-ink hover:-translate-y-0.5 hover:shadow-ink-lg",
                 qty > 0 && "ring-4 ring-orange",
               )}

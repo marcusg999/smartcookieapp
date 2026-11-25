@@ -24,7 +24,12 @@ export function MealImage({
     const key = (path?.slice("placeholder:".length) ?? "cookie") as MealArtKey;
     const Art = MEAL_ART[key] ?? MEAL_ART.cookie;
     return (
-      <div className={cn("flex items-center justify-center bg-concrete", className)} role="img" aria-label={alt}>
+      <div
+        className={cn("flex items-center justify-center bg-concrete", className)}
+        // Empty alt = decorative (the meal's name is right beside it): hide it
+        // from screen readers instead of announcing an unnamed image.
+        {...(alt ? { role: "img", "aria-label": alt } : { "aria-hidden": true })}
+      >
         <Art className="h-3/4 w-auto max-w-[80%]" />
       </div>
     );

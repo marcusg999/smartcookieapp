@@ -131,7 +131,9 @@ export const getPublishedWeeks = unstable_cache(
     const { data, error } = await supabase
       .from("menu_weeks")
       .select(WEEK_SELECT)
-      .eq("status", "published")
+      // Weeks close automatically at cutoff (Phase 8); a closed week is still
+      // this week's menu until its last delivery day.
+      .in("status", ["published", "closed"])
       .gte("week_start", addDays(today, -6))
       .order("week_start")
       .limit(8);

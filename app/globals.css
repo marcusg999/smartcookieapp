@@ -305,3 +305,31 @@
     animation: none !important;
   }
 }
+
+/* Phase 8: kitchen print output. Paper is white, ink is black, shadows and
+   decorative backgrounds drop out, and sections avoid splitting across pages.
+   Allergy red stays red (CLAUDE.md §6). */
+@media print {
+  @page {
+    margin: 0.5in;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  [data-shell="admin"] * {
+    box-shadow: none !important;
+  }
+  [data-shell="admin"] .bg-paper,
+  [data-shell="admin"] .bg-background,
+  [data-shell="admin"] .bg-orange-tint {
+    background: #fff !important;
+  }
+  [data-shell="admin"] .sticky {
+    position: static !important;
+  }
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+}

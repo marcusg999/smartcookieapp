@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import Stripe from "stripe";
 
-import { expect, signInWithPassword, test } from "./support/fixtures";
+import { expect, newContext, signInWithPassword, test } from "./support/fixtures";
 import { admin, createUser, enrollTotp, PASSWORD, uniqueEmail } from "./support/supabase";
 import { freshTotp } from "./support/totp";
 
@@ -197,7 +197,7 @@ test("school staff see orders but not billing; parents' classroom links need the
   await admin.from("child_allergens").insert({ child_id: child!.id, allergen_id: peanut!.id, severity: "severe" });
 
   // Staff: orders and classrooms, no billing, no approvals.
-  const staffPage = await (await browser.newContext()).newPage();
+  const staffPage = await (await newContext(browser)).newPage();
   await signInWithPassword(staffPage, staffEmail, "/school");
   await expect(staffPage.getByRole("link", { name: "Weekly orders" })).toBeVisible();
   await expect(staffPage.getByRole("link", { name: "Billing" })).toHaveCount(0);
@@ -207,7 +207,7 @@ test("school staff see orders but not billing; parents' classroom links need the
   expect(res?.status()).toBe(404);
 
   // Admin approves; the child's first name and allergy appear on the classroom.
-  const adminPage = await (await browser.newContext()).newPage();
+  const adminPage = await (await newContext(browser)).newPage();
   await signInWithPassword(adminPage, school.email, "/school/classrooms");
   const requests = adminPage
     .locator("section")
@@ -257,7 +257,7 @@ test("owner invoices a school mid-month, the school sees it, and the owner recor
     item_name: "Baked mac & cheese",
   });
 
-  const ownerPage = await (await browser.newContext()).newPage();
+  const ownerPage = await (await newContext(browser)).newPage();
   const secret = await signInStaff(ownerPage, "owner");
   await ownerPage.goto(`/admin/schools/${school.orgId}`);
   await ownerPage.getByRole("button", { name: "Create invoice now" }).click();
@@ -279,7 +279,7 @@ test("owner invoices a school mid-month, the school sees it, and the owner recor
   expect(email).toHaveLength(1);
 
   // The school admin sees it on Billing with a Pay now link.
-  const schoolPage = await (await browser.newContext()).newPage();
+  const schoolPage = await (await newContext(browser)).newPage();
   await signInWithPassword(schoolPage, school.email, "/school/billing");
   await expect(schoolPage.getByText("$130.00").first()).toBeVisible();
   await expect(schoolPage.getByRole("link", { name: /Pay now/ })).toBeVisible();

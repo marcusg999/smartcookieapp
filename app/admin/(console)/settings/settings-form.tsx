@@ -312,6 +312,65 @@ export function SettingsForm({ settings }: { settings: SettingsInput }) {
         </Field>
       </Section>
 
+      <Section title="Kitchen">
+        <ChipToggle
+          pressed={s.kitchen_settings.exclude_unpaid}
+          onPressedChange={(v) => set("kitchen_settings", { ...s.kitchen_settings, exclude_unpaid: v })}
+        >
+          {s.kitchen_settings.exclude_unpaid
+            ? "Unpaid à-la-carte orders stay off the cook list after cutoff"
+            : "Unpaid à-la-carte orders are cooked too"}
+        </ChipToggle>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field id="label-sheet" label="Label sheet">
+            <select
+              id="label-sheet"
+              value={s.kitchen_settings.label_sheet}
+              onChange={(e) =>
+                set("kitchen_settings", {
+                  ...s.kitchen_settings,
+                  label_sheet: e.target.value as "avery_5163" | "avery_5164",
+                })
+              }
+              className="h-11 w-full rounded-md border-2 border-ink bg-card px-3"
+            >
+              <option value="avery_5163">Avery 5163 (2 × 4 in, 10 per sheet)</option>
+              <option value="avery_5164">Avery 5164 (3⅓ × 4 in, 6 per sheet)</option>
+            </select>
+          </Field>
+          <Field id="use-by-default" label="Default use-by (days after delivery)" help="Menu items can override this.">
+            <Input
+              id="use-by-default"
+              type="number"
+              min={1}
+              max={14}
+              value={s.kitchen_settings.use_by_days}
+              onChange={(e) =>
+                set("kitchen_settings", {
+                  ...s.kitchen_settings,
+                  use_by_days: Math.min(14, Math.max(1, Number(e.target.value || 1))),
+                })
+              }
+            />
+          </Field>
+          <Field id="meals-per-bag" label="School meals per bag" help="Used for school packing lists.">
+            <Input
+              id="meals-per-bag"
+              type="number"
+              min={1}
+              max={100}
+              value={s.kitchen_settings.meals_per_bag}
+              onChange={(e) =>
+                set("kitchen_settings", {
+                  ...s.kitchen_settings,
+                  meals_per_bag: Math.min(100, Math.max(1, Number(e.target.value || 1))),
+                })
+              }
+            />
+          </Field>
+        </div>
+      </Section>
+
       <Section title="School billing">
         <Field
           id="school-invoice-day"

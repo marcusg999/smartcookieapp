@@ -25,6 +25,9 @@ const itemSchema = z.object({
   school_price_cents: cents.nullable(),
   portion_label: z.string().trim().max(60).optional().default(""),
   ingredients: z.string().trim().max(2000).optional().default(""),
+  // Phase 8: printed on meal labels.
+  reheat_instructions: z.string().trim().max(160).optional().default(""),
+  use_by_days: z.number().int().min(1).max(14).nullable().optional().default(null),
   nutrition: z
     .array(z.object({ label: z.string().trim().min(1).max(40), value: z.string().trim().min(1).max(40) }))
     .max(20)
@@ -89,6 +92,8 @@ export async function saveMenuItem(input: z.input<typeof itemSchema>): Promise<S
         category_id: data.category_id ?? null,
         portion_label: data.portion_label || null,
         ingredients: data.ingredients || null,
+        reheat_instructions: data.reheat_instructions || null,
+        use_by_days: data.use_by_days ?? null,
         nutrition: Object.fromEntries(data.nutrition.map((n) => [n.label, n.value])),
         is_snack: data.is_snack,
         is_active: data.is_active,

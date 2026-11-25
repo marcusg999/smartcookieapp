@@ -10,6 +10,8 @@ validateEnv(process.env);
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // pdfkit reads its font metrics from disk at runtime: keep it out of the bundle.
+  serverExternalPackages: ["pdfkit"],
   images: {
     // Menu photos and media come only from this project's Supabase Storage.
     remotePatterns: process.env.NEXT_PUBLIC_SUPABASE_URL

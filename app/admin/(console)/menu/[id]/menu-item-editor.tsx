@@ -37,6 +37,8 @@ export type EditorItem = {
   school_price_cents: number | null;
   portion_label: string;
   ingredients: string;
+  reheat_instructions: string;
+  use_by_days: number | null;
   nutrition: { label: string; value: string }[];
   is_snack: boolean;
   is_active: boolean;
@@ -100,6 +102,8 @@ export function MenuItemEditor({
           school_price_cents: form.school_price_cents,
           portion_label: form.portion_label,
           ingredients: form.ingredients,
+          reheat_instructions: form.reheat_instructions,
+          use_by_days: form.use_by_days,
           nutrition: form.nutrition.filter((n) => n.label && n.value),
           is_snack: form.is_snack,
           is_active: form.is_active,
@@ -307,6 +311,30 @@ export function MenuItemEditor({
             className="w-full rounded-md border-2 border-ink bg-card px-3 py-2"
           />
         </Field>
+        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+          <Field
+            id="reheat"
+            label="Reheating / serving note (on labels)"
+            help="Optional, e.g. 'Microwave 60 seconds, stir.' Shown on meal labels."
+          >
+            <Input
+              id="reheat"
+              value={form.reheat_instructions}
+              maxLength={160}
+              onChange={(e) => set("reheat_instructions", e.target.value)}
+            />
+          </Field>
+          <Field id="use-by" label="Use within (days)" help="Leave empty for the default in Settings → Kitchen.">
+            <Input
+              id="use-by"
+              type="number"
+              min={1}
+              max={14}
+              value={form.use_by_days ?? ""}
+              onChange={(e) => set("use_by_days", e.target.value ? Number(e.target.value) : null)}
+            />
+          </Field>
+        </div>
         <fieldset className="space-y-2">
           <legend className="font-semibold">Nutrition (optional)</legend>
           {form.nutrition.map((n, i) => (

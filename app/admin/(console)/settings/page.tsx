@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/admin/page-header";
 import { requireStaffAAL2 } from "@/lib/auth/guards";
+import { kitchenSettings } from "@/lib/kitchen/logic";
 import { createClient } from "@/lib/supabase/server";
 
 import type { SettingsInput } from "./actions";
@@ -38,6 +39,7 @@ export default async function SettingsPage() {
     ops_refund_limit_cents: s?.ops_refund_limit_cents ?? 5000,
     school_invoice_day: s?.school_invoice_day ?? 1,
     school_overdue_suspend_days: s?.school_overdue_suspend_days ?? null,
+    kitchen_settings: kitchenSettings(s?.kitchen_settings),
     logo_path: s?.logo_path ?? null,
   };
   return (

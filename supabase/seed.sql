@@ -254,13 +254,15 @@ begin
           '{"line1":"450 Orange Grove Blvd","city":"Pasadena","state":"CA","zip":"91105"}',
           'd1000000-0000-4000-8000-000000000001', 1790, 499, 2289, now(), now())
   returning id into v_order;
-  insert into public.order_items (order_id, child_id, classroom_id, menu_item_id, quantity, unit_price_cents, item_name, allergens_contained, badges)
-  select v_order, 'cd000000-0000-4000-8000-000000000001'::uuid, 'c1000000-0000-4000-8000-000000000002'::uuid, m.id, 1, m.base_price_cents, m.name,
-         '{Milk,Wheat}'::text[], '{Vegetarian,"Kid Favorite"}'::text[]
+  insert into public.order_items (order_id, child_id, classroom_id, menu_item_id, delivery_date, quantity, unit_price_cents, item_name, allergens_contained, may_contain, badges)
+  select v_order, 'cd000000-0000-4000-8000-000000000001'::uuid, 'c1000000-0000-4000-8000-000000000002'::uuid, m.id,
+         (select delivery_dates[1] from public.menu_weeks where id = v_week), 1, m.base_price_cents, m.name,
+         '{Milk,Wheat}'::text[], '{}'::text[], '{Vegetarian,"Kid Favorite"}'::text[]
   from public.menu_items m where m.slug = 'baked-mac-and-cheese'
   union all
-  select v_order, 'cd000000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000002', m.id, 1, m.base_price_cents, m.name,
-         '{Milk,Eggs}', '{Vegetarian}'
+  select v_order, 'cd000000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000002', m.id,
+         (select delivery_dates[3] from public.menu_weeks where id = v_week), 1, m.base_price_cents, m.name,
+         '{Milk,Eggs}', '{Wheat}', '{Vegetarian}'
   from public.menu_items m where m.slug = 'broccoli-cheddar-bake';
 end;
 $$;

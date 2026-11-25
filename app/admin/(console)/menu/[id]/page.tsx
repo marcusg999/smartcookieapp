@@ -60,6 +60,8 @@ export default async function MenuItemPage({ params }: PageProps<"/admin/menu/[i
         school_price_cents: (raw.school_price_cents as number | null) ?? null,
         portion_label: (raw.portion_label as string) ?? "",
         ingredients: (raw.ingredients as string) ?? "",
+        reheat_instructions: (raw.reheat_instructions as string | null) ?? "",
+        use_by_days: (raw.use_by_days as number | null) ?? null,
         nutrition: Object.entries((raw.nutrition as Record<string, unknown>) ?? {}).map(([label, value]) => ({
           label,
           value: String(value),
@@ -81,6 +83,8 @@ export default async function MenuItemPage({ params }: PageProps<"/admin/menu/[i
         school_price_cents: null,
         portion_label: "Kid size",
         ingredients: "",
+        reheat_instructions: "",
+        use_by_days: null,
         nutrition: [],
         is_snack: false,
         is_active: true,

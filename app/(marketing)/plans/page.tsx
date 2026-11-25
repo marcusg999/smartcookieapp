@@ -69,7 +69,13 @@ export default async function PlansPage() {
           <h2 id="compare-h" className="text-4xl font-black">
             {c.text("plans.compare_title")}
           </h2>
-          <div className="mt-6 overflow-x-auto rounded-2xl border-2 border-ink bg-paper shadow-ink">
+          {/* Keyboard users can scroll the table sideways on small screens (WCAG 2.1.1). */}
+          <div
+            className="mt-6 overflow-x-auto rounded-2xl border-2 border-ink bg-paper shadow-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            tabIndex={0}
+            role="region"
+            aria-labelledby="compare-h"
+          >
             <table className="w-full min-w-[36rem] text-left">
               <thead className="border-b-2 border-ink">
                 <tr>
