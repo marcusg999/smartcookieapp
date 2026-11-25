@@ -14,7 +14,7 @@ import { safeNext } from "@/lib/auth/redirect";
 import { requestMeta } from "@/lib/auth/request-meta";
 import { verifyTurnstile } from "@/lib/auth/turnstile";
 import { getPublicSettings } from "@/lib/content/settings";
-import { createPublicClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { hashIdentifier, rateLimit } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
@@ -199,7 +199,9 @@ export async function signUp(_prev: ActionResult | null, formData: FormData): Pr
   if (settings?.pilot_mode) {
     const code = parsed.data.pilotCode ?? "";
     const { data: valid } = code
-      ? await createPublicClient().rpc("pilot_code_is_valid", { p_code: code, p_email: parsed.data.email })
+      ? // Service role: the code check is server-only (after Turnstile + rate
+        // limit) so codes can't be guessed through the API directly.
+        await createAdminClient().rpc("pilot_code_is_valid", { p_code: code, p_email: parsed.data.email })
       : { data: false };
     if (!valid) {
       return fail("validation", "That invite code isn't valid.", {

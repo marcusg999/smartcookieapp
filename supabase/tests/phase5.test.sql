@@ -81,7 +81,7 @@ select throws_ok($$ select public.place_family_order('00000000-0000-4000-8000-00
 select throws_ok($$ select public.cancel_family_order('00000000-0000-4000-8000-000000000000') $$, '42501', null,
   'anon cannot cancel orders');
 select throws_ok($$ select * from public.partner_schools() $$, '42501', null, 'anon cannot list partner schools');
-select is(public.pilot_code_is_valid('NOPE-NOPE-1'), false, 'anon can check a pilot code (invalid → false)');
+select throws_ok($$ select public.pilot_code_is_valid('NOPE-NOPE-1') $$, '42501', null, 'anon cannot probe pilot codes (server-only since Phase 10)');
 select throws_ok($$ select public.auto_fill_week('85000000-0000-4000-8000-000000000001') $$, '42501', null,
   'anon cannot run auto-fill');
 
