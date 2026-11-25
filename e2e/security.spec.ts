@@ -90,7 +90,7 @@ test("privilege escalation and mass assignment through the API are refused", asy
   expect(view.error).not.toBeNull();
 });
 
-test("a magic link works once; reusing it is rejected", async ({ page, browser }) => {
+test("a magic link works once; reusing it is rejected @local-only", async ({ page, browser }) => {
   const email = uniqueEmail("magic-reuse");
   await createUser(email);
   await page.goto("/sign-in");
@@ -107,7 +107,9 @@ test("a magic link works once; reusing it is rejected", async ({ page, browser }
   await ctx.close();
 });
 
-test("password guessing is rate limited, with the same generic message for every failure", async ({ page }) => {
+test("password guessing is rate limited, with the same generic message for every failure @local-only", async ({
+  page,
+}) => {
   const email = uniqueEmail("brute");
   await createUser(email);
   await page.goto("/sign-in");

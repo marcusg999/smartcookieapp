@@ -1,0 +1,57 @@
+name: Staging regression
+
+# Phase 10: run the Playwright regression suite against staging after every
+# successful staging deployment (Vercel posts a deployment_status event), or
+# by hand. Needs a GitHub environment named "staging" with:
+#   vars:    STAGING_URL, STAGING_SUPABASE_URL, STAGING_SUPABASE_PUBLISHABLE_KEY
+#   secrets: STAGING_SUPABASE_SECRET_KEY (test fixtures create users), STAGING_CRON_SECRET
+# and the staging Vercel deployment needs AUTH_RATE_LIMIT_PER_MINUTE=300 (every
+# test signs in from the one CI runner IP). Tests tagged @local-only (they read
+# email from Mailpit, or check the 5/minute limit itself) are skipped there.
+# Never point this at production: the tests create users and orders.
+on:
+  deployment_status:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Preview – staging')
+    name: Playwright against staging
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    env:
+      E2E_TARGET: staging
+      PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      CRON_SECRET: ${{ secrets.STAGING_CRON_SECRET }}
+      # Stripe test-mode flows that need a real key are skipped unless provided.
+      STRIPE_SECRET_KEY: sk_test_ci_dummy
+    steps:
+      - name: Refuse anything that looks like production
+        run: |
+          case "$PLAYWRIGHT_BASE_URL" in
+            ""|*smartcookie.com|*smartcookie.com/*) echo "Not a staging URL: '$PLAYWRIGHT_BASE_URL'"; exit 1;;
+          esac
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: staging-playwright-report
+          path: playwright-report
+          retention-days: 14

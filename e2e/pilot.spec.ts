@@ -20,7 +20,7 @@ async function signInOwner(page: Page) {
   await expect(page).toHaveURL(/\/admin$/);
 }
 
-test("owner invites a founding family, adds a family to the pilot, and reads their feedback", async ({
+test("owner invites a founding family, adds a family to the pilot, and reads their feedback @local-only", async ({
   page,
   browser,
 }) => {

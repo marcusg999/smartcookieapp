@@ -6,7 +6,7 @@ import { freshTotp, totp } from "./support/totp";
 // Auth flows hit the local Supabase stack (pnpm db:start) and its Mailpit inbox.
 test.describe.configure({ mode: "parallel" });
 
-test("sign up with a password → verify email → signed in → sign out → sign in", async ({ page }) => {
+test("sign up with a password → verify email → signed in → sign out → sign in @local-only", async ({ page }) => {
   const email = uniqueEmail("signup");
   await page.goto("/sign-up");
   await page.getByLabel("Your name").fill("Pat Parent");
@@ -36,7 +36,7 @@ test("unconfirmed accounts can't sign in, and errors don't reveal whether an acc
   await expect(page.getByRole("alert").filter({ hasText: "We couldn't sign you in" })).toBeVisible();
 });
 
-test("magic link sign-in", async ({ page }) => {
+test("magic link sign-in @local-only", async ({ page }) => {
   const email = uniqueEmail("magic");
   await createUser(email);
   await page.goto("/sign-in");
@@ -110,7 +110,7 @@ test("staff with MFA must pass the challenge after signing in", async ({ page })
   await expect(page).toHaveURL(/\/admin$/);
 });
 
-test("sensitive actions require a fresh MFA step-up", async ({ page }) => {
+test("sensitive actions require a fresh MFA step-up @local-only", async ({ page }) => {
   test.slow();
   // The e2e server runs with STEP_UP_MAX_AGE_SECONDS=5 (playwright.config.ts),
   // so the step-up window lapses quickly instead of after 5 minutes.
