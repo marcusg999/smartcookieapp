@@ -8,8 +8,6 @@ import { allergyBoard, cookable, destination, needsAttention, whoFor } from "@/l
 import { todayInZone } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-import { runConflictCheck } from "../actions";
-
 export const metadata = { title: "Allergy board" };
 
 /**
@@ -41,7 +39,7 @@ export default async function AllergyBoardPage({ searchParams }: PageProps<"/adm
         weeks={weeks}
         week={week}
         path="/admin/kitchen/allergies"
-        actions={isOps ? <ActionButton run={() => runConflictCheck({})}>Check for new conflicts</ActionButton> : null}
+        actions={isOps ? <ActionButton action="conflictCheck">Check for new conflicts</ActionButton> : null}
       />
 
       <section

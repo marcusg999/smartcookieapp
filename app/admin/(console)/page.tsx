@@ -11,7 +11,6 @@ import { cutoffPassed, weekIsOpen } from "@/lib/kitchen/week";
 import { todayInZone } from "@/lib/time";
 
 import { BusinessOverview } from "./business-overview";
-import { closeWeekNow, markWeekFulfilled } from "./kitchen/actions";
 
 export const metadata = { title: "This week" };
 
@@ -59,7 +58,8 @@ export default async function AdminThisWeekPage({ searchParams }: PageProps<"/ad
             <>
               {isOwner && weekIsOpen(week) ? (
                 <ActionButton
-                  run={() => closeWeekNow({ week_id: week.id })}
+                  action="closeWeek"
+                  weekId={week.id}
                   stepUp
                   confirm="Close this week now? Families and schools can't order or change anything after this. Plan meals are auto-filled first."
                 >
@@ -68,7 +68,8 @@ export default async function AdminThisWeekPage({ searchParams }: PageProps<"/ad
               ) : null}
               {isOps && cutoffPassed(week) && week.status !== "fulfilled" ? (
                 <ActionButton
-                  run={() => markWeekFulfilled({ week_id: week.id })}
+                  action="markFulfilled"
+                  weekId={week.id}
                   confirm="Mark every order this week as fulfilled?"
                 >
                   Mark week fulfilled

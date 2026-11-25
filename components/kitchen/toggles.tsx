@@ -2,10 +2,17 @@
 
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { markDelivered, sendPaymentReminder, setPrepCheck } from "@/app/admin/(console)/kitchen/actions";
+import {
+  closeWeekNow,
+  markDelivered,
+  markWeekFulfilled,
+  runConflictCheck,
+  sendPaymentReminder,
+  setPrepCheck,
+} from "@/app/admin/(console)/kitchen/actions";
 import { useStepUp } from "@/components/mfa/step-up";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/auth/action-result";
@@ -24,7 +31,7 @@ function useAct() {
   return { pending, act };
 }
 
-/** Big tappable checkbox: "Prepared allergy-safe" for one flagged meal. */
+/** Big tappable checkbox: "Prepared allergy-safe" for one flagged meal (updates instantly). */
 export function PrepCheck({
   itemId,
   checked,
@@ -36,24 +43,42 @@ export function PrepCheck({
   label: string;
   by?: string | null;
 }) {
-  const { pending, act } = useAct();
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [on, setOn] = useState(checked);
+  // Follow the server's value when it changes (after refresh), without an effect.
+  const [seen, setSeen] = useState(checked);
+  if (seen !== checked) {
+    setSeen(checked);
+    setOn(checked);
+  }
   return (
     <label
       className={cn(
         "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-1 text-base font-bold",
-        checked ? "border-ink bg-orange-tint" : "border-ink/40",
+        on ? "border-ink bg-orange-tint" : "border-ink/40",
       )}
     >
       <input
         type="checkbox"
         className="size-6 accent-[var(--ink)]"
-        checked={checked}
-        disabled={pending}
-        onChange={(e) => act(() => setPrepCheck({ order_item_id: itemId, checked: e.target.checked }), true)}
+        checked={on}
+        onChange={(e) => {
+          const next = e.target.checked;
+          setOn(next);
+          start(async () => {
+            const r = await setPrepCheck({ order_item_id: itemId, checked: next });
+            if (!r.ok) {
+              setOn(!next);
+              toast.error(r.message);
+            }
+            router.refresh();
+          });
+        }}
         aria-label={label}
       />
       {pending ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
-      <span>{checked ? `Checked${by ? ` by ${by}` : ""}` : "Prep check"}</span>
+      <span>{on ? `Checked${on === checked && by ? ` by ${by}` : ""}` : "Prep check"}</span>
     </label>
   );
 }
@@ -104,15 +129,26 @@ export function ReminderButton({ orderId, sentAt }: { orderId: string; sentAt: s
   );
 }
 
-/** A server action button with optional step-up (week lifecycle actions). */
+const WEEK_ACTIONS = {
+  conflictCheck: () => runConflictCheck({}),
+  closeWeek: (weekId: string) => closeWeekNow({ week_id: weekId }),
+  markFulfilled: (weekId: string) => markWeekFulfilled({ week_id: weekId }),
+} as const;
+
+/**
+ * Week lifecycle / maintenance buttons. Server components pass the action's
+ * name (functions can't cross into client components); step-up when asked.
+ */
 export function ActionButton({
-  run,
+  action,
+  weekId = "",
   children,
   confirm,
   stepUp = false,
   variant = "outline",
 }: {
-  run: () => Promise<ActionResult<unknown>>;
+  action: keyof typeof WEEK_ACTIONS;
+  weekId?: string;
   children: ReactNode;
   confirm?: string;
   stepUp?: boolean;
@@ -120,6 +156,7 @@ export function ActionButton({
 }) {
   const { pending, act } = useAct();
   const runWithStepUp = useStepUp();
+  const run = () => WEEK_ACTIONS[action](weekId);
   return (
     <Button
       size="lg"

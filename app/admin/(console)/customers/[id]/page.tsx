@@ -31,7 +31,7 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
   const { data: h } = await supabase
     .from("households")
     .select(
-      "id, name, created_at, stripe_customer_id, household_members(role, user_id), addresses(id, line1, line2, city, zip, delivery_notes, is_default), children(id, first_name, last_initial, grade, dietary_preferences, notes, archived_at, child_allergens(severity, allergens(name)))",
+      "id, name, created_at, stripe_customer_id, household_members(role, user_id), addresses!addresses_household_id_fkey(id, line1, line2, city, zip, delivery_notes, is_default), children(id, first_name, last_initial, grade, dietary_preferences, notes, archived_at, child_allergens(severity, allergens(name)))",
     )
     .eq("id", id)
     .maybeSingle();

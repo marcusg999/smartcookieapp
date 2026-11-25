@@ -121,7 +121,8 @@ test("kitchen staff can't see or open Plans and Settings", async ({ page }) => {
   test.slow();
   await signInStaff(page, ["kitchen"]);
   const nav = page.getByRole("navigation", { name: "Admin" });
-  await expect(nav.getByRole("link", { name: "Kitchen" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Cook list" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Allergy board" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Plans" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Settings" })).toHaveCount(0);
   expect((await page.goto("/admin/plans"))?.status()).toBe(403);
